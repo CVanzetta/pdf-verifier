@@ -1,3 +1,4 @@
+// App.vue
 <template>
   <v-app>
     <v-container>
@@ -19,10 +20,13 @@
         </v-card-title>
         <v-card-text>
           <v-list>
-            <v-list-item v-for="test in editiqueTests" :key="test.id">
-              <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests"></v-checkbox>
-              <v-icon v-tooltip="test.commentaires" color="blue" class="ml-2">mdi-information</v-icon>
-            </v-list-item>
+            <v-list-item-group v-for="(category, index) in editiqueTests.categories" :key="index">
+              <v-subheader>{{ category.name }}</v-subheader>
+              <v-list-item v-for="test in category.tests" :key="test.id">
+                <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests"></v-checkbox>
+                <v-icon color="blue" class="ml-2" v-tooltip="test.commentaires">mdi-information</v-icon>
+              </v-list-item>
+            </v-list-item-group>
           </v-list>
         </v-card-text>
       </v-card>
@@ -58,44 +62,41 @@
 </template>
 
 <script>
-import pdfjsLib from "pdfjs-dist/build/pdf";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
-import editiqueTestsData from "@/assets/editiqueTests.json";
-import Vuetify from "vuetify";
-import "vuetify/dist/vuetify.min.css";
+import { ref, reactive, onMounted } from 'vue';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs';
+import editiqueTestsData from '@/assets/editiqueTests.json';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export default {
   name: "App",
-  data() {
-    return {
-      pdfFile: null,
-      editiqueTests: [],
-      selectedTests: [],
-      results: [],
-      loading: false,
+  setup() {
+    const pdfFile = ref(null);
+    const editiqueTests = reactive(editiqueTestsData);
+    const selectedTests = ref([]);
+    const results = ref([]);
+    const loading = ref(false);
+
+    const handleFileUpload = (event) => {
+      pdfFile.value = event;
     };
-  },
-  methods: {
-    handleFileUpload(event) {
-      this.pdfFile = event;
-    },
-    async analyzePdf() {
-      if (!this.pdfFile) {
-        this.$toast.error("Please upload a PDF file before running the analysis.");
+
+    const analyzePdf = async () => {
+      if (!pdfFile.value) {
+        console.error("Please upload a PDF file before running the analysis.");
         return;
       }
 
-      if (this.pdfFile.size > 10 * 1024 * 1024) { // Limit file size to 10MB
-        this.$toast.error("The uploaded file is too large. Please upload a file smaller than 10MB.");
+      if (pdfFile.value.size > 10 * 1024 * 1024) { // Limit file size to 10MB
+        console.error("The uploaded file is too large. Please upload a file smaller than 10MB.");
         return;
       }
 
-      this.loading = true;
+      loading.value = true;
 
       try {
-        const arrayBuffer = await this.pdfFile.arrayBuffer();
+        const arrayBuffer = await pdfFile.value.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let textContent = "";
 
@@ -105,79 +106,93 @@ export default {
           textContent += text.items.map(item => item.str).join(" ") + " ";
         }
 
-        textContent = this.preprocessText(textContent);
+        textContent = preprocessText(textContent);
 
-        this.results = this.selectedTests.map((test) => {
-          const status = this.evaluateEditique(test, textContent);
-          return { ...test, status, comments: status === "Failed" ? this.generateComments(test) : "" };
+        results.value = selectedTests.value.map((test) => {
+          const status = evaluateEditique(test, textContent);
+          return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
         });
       } catch (error) {
-        this.$toast.error("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
+        console.error("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
         console.error(error);
       } finally {
-        this.loading = false;
+        loading.value = false;
       }
-    },
-    preprocessText(text) {
+    };
+
+    const preprocessText = (text) => {
       return text
         .toLowerCase()
         .normalize("NFD").replace(/[̀-ͯ]/g, "") // Remove accents
         .replace(/\s+/g, " ") // Normalize spaces
         .trim();
-    },
-    evaluateEditique(test, textContent) {
+    };
+
+    const evaluateEditique = (test, textContent) => {
       const conditions = test.conditions;
       for (const condition of conditions) {
         if (condition.type === "surface_max") {
-          if (!this.evaluateSurfaceMax(condition, textContent)) {
+          if (!evaluateSurfaceMax(condition, textContent)) {
             return "Failed";
           }
         } else if (condition.type === "montant") {
-          if (!this.evaluateMontant(condition, textContent)) {
+          if (!evaluateMontant(condition, textContent)) {
             return "Failed";
           }
         } else if (condition.type === "date") {
-          if (!this.evaluateDate(condition, textContent)) {
+          if (!evaluateDate(condition, textContent)) {
             return "Failed";
           }
         } else if (condition.type === "texte") {
-          if (!this.evaluateTexte(condition, textContent)) {
+          if (!evaluateTexte(condition, textContent)) {
             return "Failed";
           }
         }
       }
       return "Passed";
-    },
-    evaluateSurfaceMax(condition, textContent) {
+    };
+
+    const evaluateSurfaceMax = (condition, textContent) => {
       const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
       return regex.test(textContent);
-    },
-    evaluateMontant(condition, textContent) {
-      const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
+    };
+
+    const evaluateMontant = (condition, textContent) => {
+      const regex = new RegExp(`${condition.reference}.*?((\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?))\\s*FFB`, "i");
       return regex.test(textContent);
-    },
-    evaluateDate(condition, textContent) {
-      const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
+    };
+
+    const evaluateDate = (condition, textContent) => {
+      const regex = new RegExp(`${condition.reference}.*?(\\d{2}/\\d{2}/\\d{4})`, "i");
       return regex.test(textContent);
-    },
-    evaluateTexte(condition, textContent) {
+    };
+
+    const evaluateTexte = (condition, textContent) => {
       return textContent.includes(condition.value);
-    },
-    generateComments(test) {
+    };
+
+    const generateComments = (test) => {
       return `The condition ${test.article} was not met. Please check the requirements.`;
-    },
-    async getEditiques() {
-      return editiqueTestsData;
-    },
-  },
-  async created() {
-    this.editiqueTests = await this.getEditiques();
+    };
+
+    onMounted(async () => {
+      editiqueTests.categories = await editiqueTestsData.categories;
+    });
+
+    return {
+      pdfFile,
+      editiqueTests,
+      selectedTests,
+      results,
+      loading,
+      handleFileUpload,
+      analyzePdf,
+    };
   },
 };
 </script>
 
 <style>
-@import "vuetify/dist/vuetify.min.css";
 
 #app {
   font-family: Arial, sans-serif;
