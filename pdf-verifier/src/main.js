@@ -1,19 +1,15 @@
-// main.js
 import { createApp } from 'vue';
 import App from './App.vue';
-
-// Importation de Vuetify
 import { createVuetify } from 'vuetify';
-import 'vuetify/styles'; // Styles de Vuetify
-import '@mdi/font/css/materialdesignicons.css'; // Icônes (optionnel)
+import 'vuetify/styles';
+import '@mdi/font/css/materialdesignicons.css';
 
-// Création de l'instance Vuetify
+import * as components from 'vuetify/components';
+import * as directives from 'vuetify/directives';
+
 const vuetify = createVuetify({
-  // Options personnalisées
+  components, // Inclut tous les composants de Vuetify
+  directives, // Inclut toutes les directives de Vuetify
 });
 
-const app = createApp(App);
-
-app.use(vuetify);
-
-app.mount('#app');
+createApp(App).use(vuetify).mount('#app');
