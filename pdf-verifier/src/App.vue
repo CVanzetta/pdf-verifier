@@ -21,17 +21,17 @@
         <v-card-text>
           <v-expansion-panels>
             <v-expansion-panel v-for="(category, index) in editiqueTests.categories" :key="index">
-              <v-expansion-panel-header>{{ category.nom }}</v-expansion-panel-header>
-              <v-expansion-panel-content>
+              <v-expansion-panel-title>{{ category.nom }}</v-expansion-panel-title>
+              <v-expansion-panel-text>
                 <v-list>
                   <v-list-item-group>
                     <v-list-item v-for="test in filterImportantTests(category.tests)" :key="test.id">
                       <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests"></v-checkbox>
-                      <v-icon color="blue" class="ml-2" v-tooltip:bottom="test.commentaires">mdi-information</v-icon>
+                      <v-icon color="blue" class="ml-2">mdi-information</v-icon>
                     </v-list-item>
                   </v-list-item-group>
                 </v-list>
-              </v-expansion-panel-content>
+              </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
         </v-card-text>
@@ -42,25 +42,12 @@
           Test Results
         </v-card-title>
         <v-card-text>
-          <v-simple-table>
-            <thead>
-              <tr>
-                <th>Test</th>
-                <th>Status</th>
-                <th>Comments</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="result in results" :key="result.id" :class="{'success-row': result.status === 'Passed', 'failed-row': result.status === 'Failed'}">
-                <td>{{ result.categorie }} - {{ result.article }}</td>
-                <td>
-                  <v-icon v-if="result.status === 'Passed'" color="green">mdi-check-circle</v-icon>
-                  <v-icon v-if="result.status === 'Failed'" color="red">mdi-close-circle</v-icon>
-                </td>
-                <td>{{ result.comments }}</td>
-              </tr>
-            </tbody>
-          </v-simple-table>
+          <v-data-table :headers="tableHeaders" :items="results" class="elevation-1">
+            <template v-slot:item.status="{ item }">
+              <v-icon v-if="item.status === 'Passed'" color="green">mdi-check-circle</v-icon>
+              <v-icon v-if="item.status === 'Failed'" color="red">mdi-close-circle</v-icon>
+            </template>
+          </v-data-table>
         </v-card-text>
       </v-card>
     </v-container>
@@ -83,10 +70,15 @@ export default {
     const selectedTests = ref([]);
     const results = ref([]);
     const loading = ref(false);
+    const tableHeaders = [
+      { text: 'Test', value: 'categorie' },
+      { text: 'Status', value: 'status' },
+      { text: 'Comments', value: 'comments' },
+    ];
 
     const handleFileUpload = (event) => {
-      if (event.target.files.length > 0) {
-        pdfFile.value = event.target.files[0];
+      if (event && event instanceof File) {
+        pdfFile.value = event;
       }
     };
 
@@ -208,6 +200,7 @@ export default {
       selectedTests,
       results,
       loading,
+      tableHeaders,
       handleFileUpload,
       analyzePdf,
       filterImportantTests,
