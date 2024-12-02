@@ -63,8 +63,8 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue';
-import pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs';
 import editiqueTestsData from '@/assets/editiqueTests.json';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
