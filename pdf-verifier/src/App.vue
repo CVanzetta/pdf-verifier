@@ -158,12 +158,12 @@ export default {
     };
 
     const evaluateMontant = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
+      const regex = new RegExp(`${condition.reference}.*?((\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?))\\s*FFB`, "i");
       return regex.test(textContent);
     };
 
     const evaluateDate = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
+      const regex = new RegExp(`${condition.reference}.*?(\\d{2}/\\d{2}/\\d{4})`, "i");
       return regex.test(textContent);
     };
 

@@ -8,6 +8,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "core-js": "^3.8.3",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
