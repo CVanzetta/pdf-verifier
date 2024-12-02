@@ -1,19 +1,51 @@
-// main.js
 import { createApp } from 'vue';
 import App from './App.vue';
-
-// Importation de Vuetify
 import { createVuetify } from 'vuetify';
-import 'vuetify/styles'; // Styles de Vuetify
-import '@mdi/font/css/materialdesignicons.css'; // Icônes (optionnel)
+import 'vuetify/styles';
+import '@mdi/font/css/materialdesignicons.css';
 
-// Création de l'instance Vuetify
+import {
+VApp,
+VContainer,
+VCard,
+VCardTitle,
+VCardText,
+VFileInput,
+VBtn,
+VList,
+VListItem,
+VListItemGroup,
+VSubheader,
+VCheckbox,
+VIcon,
+VSimpleTable,
+VExpansionPanels,
+VExpansionPanel,
+VExpansionPanelHeader,
+VExpansionPanelContent,
+} from 'vuetify/components';
+
 const vuetify = createVuetify({
-  // Options personnalisées
+components: {
+    VApp,
+    VContainer,
+    VCard,
+    VCardTitle,
+    VCardText,
+    VFileInput,
+    VBtn,
+    VList,
+    VListItem,
+    VListItemGroup,
+    VSubheader,
+    VCheckbox,
+    VIcon,
+    VSimpleTable,
+    VExpansionPanels,
+    VExpansionPanel,
+    VExpansionPanelHeader,
+    VExpansionPanelContent,
+},
 });
 
-const app = createApp(App);
-
-app.use(vuetify);
-
-app.mount('#app');
+createApp(App).use(vuetify).mount('#app');

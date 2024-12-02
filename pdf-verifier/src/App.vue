@@ -19,15 +19,21 @@
           Select Tests to Run
         </v-card-title>
         <v-card-text>
-          <v-list>
-            <v-list-item-group v-for="(category, index) in editiqueTests.categories" :key="index">
-              <v-subheader>{{ category.name }}</v-subheader>
-              <v-list-item v-for="test in category.tests" :key="test.id">
-                <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests"></v-checkbox>
-                <v-icon color="blue" class="ml-2" v-tooltip="test.commentaires">mdi-information</v-icon>
-              </v-list-item>
-            </v-list-item-group>
-          </v-list>
+          <v-expansion-panels>
+            <v-expansion-panel v-for="(category, index) in editiqueTests.categories" :key="index">
+              <v-expansion-panel-header>{{ category.nom }}</v-expansion-panel-header>
+              <v-expansion-panel-content>
+                <v-list>
+                  <v-list-item-group>
+                    <v-list-item v-for="test in filterImportantTests(category.tests)" :key="test.id">
+                      <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests"></v-checkbox>
+                      <v-icon color="blue" class="ml-2" v-tooltip:bottom="test.commentaires">mdi-information</v-icon>
+                    </v-list-item>
+                  </v-list-item-group>
+                </v-list>
+              </v-expansion-panel-content>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </v-card-text>
       </v-card>
 
@@ -69,7 +75,6 @@ import editiqueTestsData from '@/assets/editiqueTests.json';
 // Configurez le worker depuis un CDN
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-
 export default {
   name: "App",
   setup() {
@@ -80,7 +85,9 @@ export default {
     const loading = ref(false);
 
     const handleFileUpload = (event) => {
-      pdfFile.value = event;
+      if (event.target.files.length > 0) {
+        pdfFile.value = event.target.files[0];
+      }
     };
 
     const analyzePdf = async () => {
@@ -159,12 +166,12 @@ export default {
     };
 
     const evaluateMontant = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?((\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?))\\s*FFB`, "i");
+      const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
       return regex.test(textContent);
     };
 
     const evaluateDate = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?(\\d{2}/\\d{2}/\\d{4})`, "i");
+      const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
       return regex.test(textContent);
     };
 
@@ -174,6 +181,21 @@ export default {
 
     const generateComments = (test) => {
       return `The condition ${test.article} was not met. Please check the requirements.`;
+    };
+
+    const filterImportantTests = (tests) => {
+      const importantTests = [
+        "Frais réels justifiés dans la limite de 300 FFB sans excéder pour les honoraires d'expert 5% de l'indemnité jusqu’à 250 fois l’indice et 2,5% au-delà de 250 fois l’indice, pour les pertes indirectes 10% de l’indemnité",
+        "25% du capital assuré en Incendie, porté à 35% si les locaux professionnels sont protégés conformément aux clauses 15, 15A, 16A, 17 ou 17A, avec un minimum de 25 FFB et un maximum de 155 FFB, sans excéder ni les sous-limites prévues ci-dessus en Incendie, Dégâts des eaux, Tempête… ni celles fixées ci-après :",
+        "Risques environnementaux : 400 000 € non indexés, tous dommages confondus, par sinistre et par année d'assurance, avec des sous-limites spécifiques pour chaque type de dommage.",
+        "Perte d’exploitation – art.19 :",
+        "Profession libérale : 200 FFB (jusqu'à 1000 FFB), franchise relative de 3 jours ouvrés, période d’indemnisation de 12 mois",
+        "Entreprise : 500 FFB (jusqu'à 1500 FFB)",
+        "Perte d’exploitation étendue – art 32A :",
+        "Même limite que celle de la perte d’exploitation de base – art.19 – sans excéder en cas de :",
+        "Interdiction, difficultés ou impossibilité d’accès aux locaux professionnels : 10% de la limite ci-dessus, franchise relative de 3 jours ouvrés, période d’indemnisation de 18 mois"
+      ];
+      return tests.filter(test => importantTests.includes(test.article));
     };
 
     onMounted(async () => {
@@ -188,12 +210,14 @@ export default {
       loading,
       handleFileUpload,
       analyzePdf,
+      filterImportantTests,
     };
   },
 };
 </script>
 
 <style>
+@import "vuetify/styles";
 
 #app {
   font-family: Arial, sans-serif;
