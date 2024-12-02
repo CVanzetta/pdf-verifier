@@ -193,7 +193,6 @@ export default {
 </script>
 
 <style>
-@import "vuetify/styles";
 
 #app {
   font-family: Arial, sans-serif;
