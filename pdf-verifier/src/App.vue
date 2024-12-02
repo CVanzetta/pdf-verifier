@@ -1,41 +1,68 @@
-// App.vue
 <template>
-  <div id="app">
-    <h1>PDF Verification Tool</h1>
-    <div class="upload-section">
-      <input type="file" @change="handleFileUpload" />
-      <button @click="analyzePdf">Run Selected Tests</button>
-    </div>
-    <div class="test-section">
-      <h2>Select Tests to Run</h2>
-      <ul>
-        <li v-for="test in editiqueTests" :key="test.id">
-          <input type="checkbox" :value="test" v-model="selectedTests" /> {{ test.categorie }} - {{ test.article }}
-        </li>
-      </ul>
-    </div>
-    <div class="results-section" v-if="results.length > 0">
-      <h2>Test Results</h2>
-      <table>
-        <tr>
-          <th>Test</th>
-          <th>Status</th>
-          <th>Comments</th>
-        </tr>
-        <tr v-for="result in results" :key="result.id">
-          <td>{{ result.categorie }} - {{ result.article }}</td>
-          <td>{{ result.status }}</td>
-          <td>{{ result.comments }}</td>
-        </tr>
-      </table>
-    </div>
-  </div>
+  <v-app>
+    <v-container>
+      <v-card class="ma-5">
+        <v-card-title>
+          PDF Verification Tool
+        </v-card-title>
+        <v-card-text>
+          <v-file-input label="Upload PDF" @change="handleFileUpload" outlined></v-file-input>
+          <v-btn color="primary" @click="analyzePdf" :loading="loading" :disabled="loading || !pdfFile">
+            Run Selected Tests
+          </v-btn>
+        </v-card-text>
+      </v-card>
+
+      <v-card class="ma-5">
+        <v-card-title>
+          Select Tests to Run
+        </v-card-title>
+        <v-card-text>
+          <v-list>
+            <v-list-item v-for="test in editiqueTests" :key="test.id">
+              <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests"></v-checkbox>
+              <v-icon v-tooltip="test.commentaires" color="blue" class="ml-2">mdi-information</v-icon>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+      </v-card>
+
+      <v-card v-if="results.length > 0" class="ma-5">
+        <v-card-title>
+          Test Results
+        </v-card-title>
+        <v-card-text>
+          <v-simple-table>
+            <thead>
+              <tr>
+                <th>Test</th>
+                <th>Status</th>
+                <th>Comments</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="result in results" :key="result.id" :class="{'success-row': result.status === 'Passed', 'failed-row': result.status === 'Failed'}">
+                <td>{{ result.categorie }} - {{ result.article }}</td>
+                <td>
+                  <v-icon v-if="result.status === 'Passed'" color="green">mdi-check-circle</v-icon>
+                  <v-icon v-if="result.status === 'Failed'" color="red">mdi-close-circle</v-icon>
+                </td>
+                <td>{{ result.comments }}</td>
+              </tr>
+            </tbody>
+          </v-simple-table>
+        </v-card-text>
+      </v-card>
+    </v-container>
+  </v-app>
 </template>
 
 <script>
 import pdfjsLib from "pdfjs-dist/build/pdf";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 import editiqueTestsData from "@/assets/editiqueTests.json";
+import Vuetify from "vuetify";
+import "vuetify/dist/vuetify.min.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -52,16 +79,16 @@ export default {
   },
   methods: {
     handleFileUpload(event) {
-      this.pdfFile = event.target.files[0];
+      this.pdfFile = event;
     },
     async analyzePdf() {
       if (!this.pdfFile) {
-        alert("Please upload a PDF file before running the analysis.");
+        this.$toast.error("Please upload a PDF file before running the analysis.");
         return;
       }
 
       if (this.pdfFile.size > 10 * 1024 * 1024) { // Limit file size to 10MB
-        alert("The uploaded file is too large. Please upload a file smaller than 10MB.");
+        this.$toast.error("The uploaded file is too large. Please upload a file smaller than 10MB.");
         return;
       }
 
@@ -85,7 +112,7 @@ export default {
           return { ...test, status, comments: status === "Failed" ? this.generateComments(test) : "" };
         });
       } catch (error) {
-        alert("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
+        this.$toast.error("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
         console.error(error);
       } finally {
         this.loading = false;
@@ -126,7 +153,7 @@ export default {
       return regex.test(textContent);
     },
     evaluateMontant(condition, textContent) {
-      const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
+      const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
       return regex.test(textContent);
     },
     evaluateDate(condition, textContent) {
@@ -150,17 +177,19 @@ export default {
 </script>
 
 <style>
+@import "vuetify/dist/vuetify.min.css";
+
 #app {
   font-family: Arial, sans-serif;
   text-align: center;
   color: #333;
   margin-top: 50px;
 }
-.upload-section {
-  margin-bottom: 20px;
+.success-row {
+  background-color: #e8f5e9;
 }
-.results-section {
-  margin-top: 20px;
+.failed-row {
+  background-color: #ffebee;
 }
 .loading {
   font-weight: bold;
