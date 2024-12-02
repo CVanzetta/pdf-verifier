@@ -1,16 +1,3 @@
-// Initializing a Vue.js Project for PDF Verification Application
-
-// Step 1: Setting Up the Project
-// -----------------------------------------------------
-// Run these commands in your terminal to set up the project:
-// 1. Create a new Vue project: vue create pdf-verifier
-// 2. Navigate to the project folder: cd pdf-verifier
-// 3. Install necessary dependencies: npm install pdf-lib pdf-parse
-
-// Step 2: Develop the User Interface (UI) for PDF Upload & Tests Selection
-// -----------------------------------------------------
-// Create a Vue component to allow the user to upload a PDF and select the tests to run.
-
 // App.vue
 <template>
   <div id="app">
@@ -46,7 +33,11 @@
 </template>
 
 <script>
-import { PDFDocument } from "pdf-lib";
+import pdfjsLib from "pdfjs-dist/build/pdf";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
+import editiqueTestsData from "@/assets/editiqueTests.json";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export default {
   name: "App",
@@ -56,6 +47,7 @@ export default {
       editiqueTests: [],
       selectedTests: [],
       results: [],
+      loading: false,
     };
   },
   methods: {
@@ -67,42 +59,92 @@ export default {
         alert("Please upload a PDF file before running the analysis.");
         return;
       }
-      const arrayBuffer = await this.pdfFile.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-      const textContent = await pdfDoc.getTextContent();
 
-      this.results = this.selectedTests.map((test) => {
-        // Implement analysis of textContent for specific test criteria here
-        const status = this.evaluateEditique(test, textContent);
-        return { ...test, status, comments: "Some comments if test fails." };
-      });
+      if (this.pdfFile.size > 10 * 1024 * 1024) { // Limit file size to 10MB
+        alert("The uploaded file is too large. Please upload a file smaller than 10MB.");
+        return;
+      }
+
+      this.loading = true;
+
+      try {
+        const arrayBuffer = await this.pdfFile.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let textContent = "";
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const text = await page.getTextContent();
+          textContent += text.items.map(item => item.str).join(" ") + " ";
+        }
+
+        textContent = this.preprocessText(textContent);
+
+        this.results = this.selectedTests.map((test) => {
+          const status = this.evaluateEditique(test, textContent);
+          return { ...test, status, comments: status === "Failed" ? this.generateComments(test) : "" };
+        });
+      } catch (error) {
+        alert("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
+        console.error(error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    preprocessText(text) {
+      return text
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "") // Remove accents
+        .replace(/\s+/g, " ") // Normalize spaces
+        .trim();
     },
     evaluateEditique(test, textContent) {
-      // For now, let it just check if the article mentioned in the test exists in the text.
-      return textContent.includes(test.article) ? "Passed" : "Failed";
+      const conditions = test.conditions;
+      for (const condition of conditions) {
+        if (condition.type === "surface_max") {
+          if (!this.evaluateSurfaceMax(condition, textContent)) {
+            return "Failed";
+          }
+        } else if (condition.type === "montant") {
+          if (!this.evaluateMontant(condition, textContent)) {
+            return "Failed";
+          }
+        } else if (condition.type === "date") {
+          if (!this.evaluateDate(condition, textContent)) {
+            return "Failed";
+          }
+        } else if (condition.type === "texte") {
+          if (!this.evaluateTexte(condition, textContent)) {
+            return "Failed";
+          }
+        }
+      }
+      return "Passed";
+    },
+    evaluateSurfaceMax(condition, textContent) {
+      const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
+      return regex.test(textContent);
+    },
+    evaluateMontant(condition, textContent) {
+      const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
+      return regex.test(textContent);
+    },
+    evaluateDate(condition, textContent) {
+      const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
+      return regex.test(textContent);
+    },
+    evaluateTexte(condition, textContent) {
+      return textContent.includes(condition.value);
+    },
+    generateComments(test) {
+      return `The condition ${test.article} was not met. Please check the requirements.`;
+    },
+    async getEditiques() {
+      return editiqueTestsData;
     },
   },
   async created() {
-    // Load editique tests from the file or provide a mock data as below
     this.editiqueTests = await this.getEditiques();
-  },
-  methods: {
-    getEditiques() {
-      // Implement loading the editiqueTests JSON structure dynamically here
-      return [
-        {
-          id: "test1",
-          categorie: "Incendie-Explosion",
-          risque: "Incendie-Explosion et Assimilés",
-          article: "art.1",
-          engagement_max: "Valeur à neuf selon art. 23",
-          franchise: "néant",
-          conditions: ["< XXX m² de locaux aménagés –art.11-"],
-          commentaires: "",
-        },
-        // Add more editique tests as required.
-      ];
-    },
   },
 };
 </script>
@@ -120,15 +162,8 @@ export default {
 .results-section {
   margin-top: 20px;
 }
+.loading {
+  font-weight: bold;
+  color: #007bff;
+}
 </style>
-
-// Step 3: Implement Analysis and PDF Text Extraction
-// -----------------------------------------------------
-// Use the imported pdf-lib to extract the text content of the PDF and apply the editique verification rules
-// in the 'analyzePdf()' method.
-
-// Note: Above implementation demonstrates a starting point for analyzing PDFs in Vue.js.
-// Extraction of the PDF text and proper verification requires further implementation depending on your editique complexity.
-
-// For more advanced analysis, you may use other libraries like pdf-parse or pdf.js in conjunction with pdf-lib.
-// Consider using a Node.js server for more secure file processing and rule execution if applicable.
