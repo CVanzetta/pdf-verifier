@@ -64,10 +64,11 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs';
 import editiqueTestsData from '@/assets/editiqueTests.json';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Configurez le worker depuis un CDN
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 
 export default {
   name: "App",
