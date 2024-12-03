@@ -28,9 +28,9 @@
               <v-expansion-panel-title>{{ category.nom }}</v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-list>
-                  <v-list-item-group v-model="selectedTests">
+                  <v-list-item-group multiple>
                     <v-list-item v-for="test in filterImportantTests(category.tests)" :key="test.id">
-                      <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test"></v-checkbox>
+                      <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests" @change="toggleTestSelection(test)"></v-checkbox>
                       <v-icon color="blue" class="ml-2">mdi-information</v-icon>
                     </v-list-item>
                   </v-list-item-group>
@@ -98,6 +98,7 @@ export default {
         return;
       }
 
+      console.log("Selected Tests:", selectedTests.value);
       loading.value = true;
 
       try {
@@ -191,18 +192,7 @@ export default {
     };
 
     const filterImportantTests = (tests) => {
-      const importantTests = [
-        "Frais réels justifiés dans la limite de 300 FFB sans excéder pour les honoraires d'expert 5% de l'indemnité jusqu’à 250 fois l’indice et 2,5% au-delà de 250 fois l’indice, pour les pertes indirectes 10% de l’indemnité",
-        "25% du capital assuré en Incendie, porté à 35% si les locaux professionnels sont protégés conformément aux clauses 15, 15A, 16A, 17 ou 17A, avec un minimum de 25 FFB et un maximum de 155 FFB, sans excéder ni les sous-limites prévues ci-dessus en Incendie, Dégâts des eaux, Tempête… ni celles fixées ci-après :",
-        "Risques environnementaux : 400 000 € non indexés, tous dommages confondus, par sinistre et par année d'assurance, avec des sous-limites spécifiques pour chaque type de dommage.",
-        "Perte d’exploitation – art.19 :",
-        "Profession libérale : 200 FFB (jusqu'à 1000 FFB), franchise relative de 3 jours ouvrés, période d’indemnisation de 12 mois",
-        "Entreprise : 500 FFB (jusqu'à 1500 FFB)",
-        "Perte d’exploitation étendue – art 32A :",
-        "Même limite que celle de la perte d’exploitation de base – art.19 – sans excéder en cas de :",
-        "Interdiction, difficultés ou impossibilité d’accès aux locaux professionnels : 10% de la limite ci-dessus, franchise relative de 3 jours ouvrés, période d’indemnisation de 18 mois"
-      ];
-      return tests.filter(test => importantTests.includes(test.article));
+      return tests;
     };
 
     const toggleSelectAll = () => {
@@ -211,11 +201,23 @@ export default {
       } else {
         selectedTests.value = [];
       }
-      console.log("Selected Tests:", selectedTests.value);
+      console.log("Selected Tests after toggleSelectAll:", selectedTests.value);
+    };
+
+    const toggleTestSelection = (test) => {
+      const index = selectedTests.value.findIndex(selectedTest => selectedTest.id === test.id);
+      if (index === -1) {
+        selectedTests.value.push(test);
+      } else {
+        selectedTests.value.splice(index, 1);
+      }
+      console.log("Updated Selected Tests after toggleTestSelection:", selectedTests.value);
     };
 
     onMounted(async () => {
+      console.log("Mounted and loading editique tests...");
       editiqueTests.categories = await editiqueTestsData.categories;
+      console.log("Loaded editique tests:", editiqueTests.categories);
     });
 
     return {
@@ -229,6 +231,7 @@ export default {
       filterImportantTests,
       selectAll,
       toggleSelectAll,
+      toggleTestSelection,
     };
   },
 };
