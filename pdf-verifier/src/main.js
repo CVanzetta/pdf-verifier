@@ -4,12 +4,44 @@ import { createVuetify } from 'vuetify';
 import 'vuetify/styles';
 import '@mdi/font/css/materialdesignicons.css';
 
-import * as components from 'vuetify/components';
-import * as directives from 'vuetify/directives';
+import {
+VApp,
+VContainer,
+VCard,
+VCardTitle,
+VCardText,
+VFileInput,
+VBtn,
+VList,
+VListItem,
+VExpansionPanels,
+VExpansionPanel,
+VExpansionPanelTitle,
+VExpansionPanelText,
+VCheckbox,
+VIcon,
+VDataTable,
+} from 'vuetify/components';
 
 const vuetify = createVuetify({
-  components, // Inclut tous les composants de Vuetify
-  directives, // Inclut toutes les directives de Vuetify
+components: {
+    VApp,
+    VContainer,
+    VCard,
+    VCardTitle,
+    VCardText,
+    VFileInput,
+    VBtn,
+    VList,
+    VListItem,
+    VExpansionPanels,
+    VExpansionPanel,
+    VExpansionPanelTitle,
+    VExpansionPanelText,
+    VCheckbox,
+    VIcon,
+    VDataTable,
+},
 });
 
 createApp(App).use(vuetify).mount('#app');

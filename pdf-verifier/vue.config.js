@@ -15,5 +15,13 @@ module.exports = defineConfig({
         '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': JSON.stringify(false),
       }),
     ],
+    module: {
+      rules: [
+        {
+          test: /pdf\.worker\.js$/,
+          use: 'file-loader',
+        },
+      ],
+    },
   },
 });

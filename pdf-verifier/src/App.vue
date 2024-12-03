@@ -1,4 +1,3 @@
-// App.vue
 <template>
   <v-app>
     <v-container>
@@ -7,7 +6,7 @@
           PDF Verification Tool
         </v-card-title>
         <v-card-text>
-          <v-file-input label="Upload PDF" @change="handleFileUpload" outlined></v-file-input>
+          <v-file-input label="Upload PDF" v-model="pdfFile" outlined></v-file-input>
           <v-btn color="primary" @click="analyzePdf" :loading="loading" :disabled="loading || !pdfFile">
             Run Selected Tests
           </v-btn>
@@ -19,6 +18,11 @@
           Select Tests to Run
         </v-card-title>
         <v-card-text>
+          <v-checkbox
+            label="Select All Tests"
+            v-model="selectAll"
+            @change="toggleSelectAll"
+          ></v-checkbox>
           <v-expansion-panels>
             <v-expansion-panel v-for="(category, index) in editiqueTests.categories" :key="index">
               <v-expansion-panel-title>{{ category.nom }}</v-expansion-panel-title>
@@ -56,11 +60,10 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import * as pdfjsLib from 'pdfjs-dist';
 import editiqueTestsData from '@/assets/editiqueTests.json';
 
-// Configurez le worker depuis un CDN
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export default {
   name: "App",
@@ -70,17 +73,12 @@ export default {
     const selectedTests = ref([]);
     const results = ref([]);
     const loading = ref(false);
+    const selectAll = ref(false);
     const tableHeaders = [
       { text: 'Test', value: 'categorie' },
       { text: 'Status', value: 'status' },
       { text: 'Comments', value: 'comments' },
     ];
-
-    const handleFileUpload = (event) => {
-      if (event && event instanceof File) {
-        pdfFile.value = event;
-      }
-    };
 
     const analyzePdf = async () => {
       if (!pdfFile.value) {
@@ -190,6 +188,14 @@ export default {
       return tests.filter(test => importantTests.includes(test.article));
     };
 
+    const toggleSelectAll = () => {
+      if (selectAll.value) {
+        selectedTests.value = editiqueTests.categories.flatMap(category => filterImportantTests(category.tests));
+      } else {
+        selectedTests.value = [];
+      }
+    };
+
     onMounted(async () => {
       editiqueTests.categories = await editiqueTestsData.categories;
     });
@@ -201,9 +207,10 @@ export default {
       results,
       loading,
       tableHeaders,
-      handleFileUpload,
       analyzePdf,
       filterImportantTests,
+      selectAll,
+      toggleSelectAll,
     };
   },
 };
