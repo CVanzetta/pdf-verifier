@@ -61,10 +61,9 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist';
-import workerPath from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import editiqueTestsData from '@/assets/editiqueTests.json';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath;
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export default {
   name: "App",
