@@ -28,9 +28,9 @@
               <v-expansion-panel-title>{{ category.nom }}</v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-list>
-                  <v-list-item-group>
+                  <v-list-item-group v-model="selectedTests">
                     <v-list-item v-for="test in filterImportantTests(category.tests)" :key="test.id">
-                      <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test" v-model="selectedTests"></v-checkbox>
+                      <v-checkbox :label="test.categorie + ' - ' + test.article" :value="test"></v-checkbox>
                       <v-icon color="blue" class="ml-2">mdi-information</v-icon>
                     </v-list-item>
                   </v-list-item-group>
@@ -81,6 +81,8 @@ export default {
     ];
 
     const analyzePdf = async () => {
+      console.log("PDF analysis started...");
+
       if (!pdfFile.value) {
         console.error("Please upload a PDF file before running the analysis.");
         return;
@@ -88,6 +90,11 @@ export default {
 
       if (pdfFile.value.size > 10 * 1024 * 1024) { // Limit file size to 10MB
         console.error("The uploaded file is too large. Please upload a file smaller than 10MB.");
+        return;
+      }
+
+      if (selectedTests.value.length === 0) {
+        console.error("No tests selected. Please select at least one test to run.");
         return;
       }
 
@@ -99,17 +106,20 @@ export default {
         let textContent = "";
 
         for (let i = 1; i <= pdf.numPages; i++) {
+          console.log(`Analyzing page ${i} of ${pdf.numPages}...`);
           const page = await pdf.getPage(i);
           const text = await page.getTextContent();
           textContent += text.items.map(item => item.str).join(" ") + " ";
         }
 
         textContent = preprocessText(textContent);
+        console.log("Extracted PDF Content:", textContent);
 
         results.value = selectedTests.value.map((test) => {
           const status = evaluateEditique(test, textContent);
           return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
         });
+        console.log("Results after analysis:", results.value);
       } catch (error) {
         console.error("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
         console.error(error);
@@ -127,26 +137,33 @@ export default {
     };
 
     const evaluateEditique = (test, textContent) => {
+      console.log(`Evaluating test: ${test.article}`);
       const conditions = test.conditions;
       for (const condition of conditions) {
+        console.log(`Checking condition type: ${condition.type}`);
         if (condition.type === "surface_max") {
           if (!evaluateSurfaceMax(condition, textContent)) {
+            console.log(`Failed surface_max condition for test: ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "montant") {
           if (!evaluateMontant(condition, textContent)) {
+            console.log(`Failed montant condition for test: ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "date") {
           if (!evaluateDate(condition, textContent)) {
+            console.log(`Failed date condition for test: ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "texte") {
           if (!evaluateTexte(condition, textContent)) {
+            console.log(`Failed texte condition for test: ${test.article}`);
             return "Failed";
           }
         }
       }
+      console.log(`Passed all conditions for test: ${test.article}`);
       return "Passed";
     };
 
@@ -194,6 +211,7 @@ export default {
       } else {
         selectedTests.value = [];
       }
+      console.log("Selected Tests:", selectedTests.value);
     };
 
     onMounted(async () => {
