@@ -61,7 +61,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist';
-import editiqueTestsData from '@/assets/Tests.json';
+import testData from '@/assets/Test.json';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
@@ -69,7 +69,7 @@ export default {
   name: "App",
   setup() {
     const pdfFile = ref(null);
-    const editiqueTests = reactive(editiqueTestsData);
+    const editiqueTests = reactive(testData);
     const selectedTests = ref([]);
     const results = ref([]);
     const loading = ref(false);
@@ -216,7 +216,7 @@ export default {
 
     onMounted(async () => {
       console.log("Mounted and loading editique tests...");
-      editiqueTests.categories = await editiqueTestsData.categories;
+      editiqueTests.categories = await testData.categories;
       console.log("Loaded editique tests:", editiqueTests.categories);
     });
 
