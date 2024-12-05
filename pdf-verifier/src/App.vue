@@ -147,19 +147,19 @@ export default {
             console.log(`Failed surface_max condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "montant") {
-          if (!evaluateMontant(condition, textContent)) {
-            console.log(`Failed montant condition for test: ${test.article}`);
+        } else if (condition.type === "montant_max") {
+          if (!evaluateMontantMax(condition, textContent)) {
+            console.log(`Failed montant_max condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "date") {
-          if (!evaluateDate(condition, textContent)) {
-            console.log(`Failed date condition for test: ${test.article}`);
+        } else if (condition.type === "date_presence") {
+          if (!evaluateDatePresence(condition, textContent)) {
+            console.log(`Failed date_presence condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "texte") {
-          if (!evaluateTexte(condition, textContent)) {
-            console.log(`Failed texte condition for test: ${test.article}`);
+        } else if (condition.type === "texte_present") {
+          if (!evaluateTextePresent(condition, textContent)) {
+            console.log(`Failed texte_present condition for test: ${test.article}`);
             return "Failed";
           }
         } else {
@@ -172,21 +172,33 @@ export default {
     };
 
     const evaluateSurfaceMax = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
-      return regex.test(textContent);
+      const regex = new RegExp(`${condition.reference}.*?(\d+)\s*m²`, "i");
+      const match = textContent.match(regex);
+      if (match) {
+        const actualSurface = parseInt(match[1], 10);
+        const conditionSurface = parseInt(condition.value, 10);
+        return condition.operator === "<=" ? actualSurface <= conditionSurface : false;
+      }
+      return false;
     };
 
-    const evaluateMontant = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
-      return regex.test(textContent);
+    const evaluateMontantMax = (condition, textContent) => {
+      const regex = new RegExp(`${condition.reference}.*?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*FFB`, "i");
+      const match = textContent.match(regex);
+      if (match) {
+        const actualAmount = parseFloat(match[1].replace(/[,]/g, ''));
+        const conditionAmount = parseFloat(condition.value);
+        return condition.operator === "<=" ? actualAmount <= conditionAmount : false;
+      }
+      return false;
     };
 
-    const evaluateDate = (condition, textContent) => {
+    const evaluateDatePresence = (condition, textContent) => {
       const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
       return regex.test(textContent);
     };
 
-    const evaluateTexte = (condition, textContent) => {
+    const evaluateTextePresent = (condition, textContent) => {
       return textContent.includes(condition.value);
     };
 
