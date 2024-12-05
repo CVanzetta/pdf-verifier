@@ -61,7 +61,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist';
-import testData from '@/assets/Test.json';
+import testData from '@/assets/Tests.json';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
