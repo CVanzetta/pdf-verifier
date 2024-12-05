@@ -61,7 +61,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist';
-import editiqueTestsData from '@/assets/editiqueTests.json';
+import editiqueTestsData from '@/assets/Tests.json';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
