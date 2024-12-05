@@ -162,6 +162,51 @@ export default {
             console.log(`Failed texte_present condition for test: ${test.article}`);
             return "Failed";
           }
+        } else if (condition.type === "garantie") {
+          if (!evaluateGarantie(condition, textContent)) {
+            console.log(`Failed garantie condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "engagement_max") {
+          if (!evaluateEngagementMax(condition, textContent)) {
+            console.log(`Failed engagement_max condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "franchise") {
+          if (!evaluateFranchise(condition, textContent)) {
+            console.log(`Failed franchise condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "aménagements") {
+          if (!evaluateAmenagements(condition, textContent)) {
+            console.log(`Failed aménagements condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "exclusion") {
+          if (!evaluateExclusion(condition, textContent)) {
+            console.log(`Failed exclusion condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "valeur_max") {
+          if (!evaluateValeurMax(condition, textContent)) {
+            console.log(`Failed valeur_max condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "dommages_max") {
+          if (!evaluateDommagesMax(condition, textContent)) {
+            console.log(`Failed dommages_max condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "protection_locaux") {
+          if (!evaluateProtectionLocaux(condition, textContent)) {
+            console.log(`Failed protection_locaux condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "sous_limites") {
+          if (!evaluateSousLimites(condition, textContent)) {
+            console.log(`Failed sous_limites condition for test: ${test.article}`);
+            return "Failed";
+          }
         } else {
           console.warn(`Unknown condition type: ${condition.type}`);
           return "Failed";
@@ -200,6 +245,58 @@ export default {
 
     const evaluateTextePresent = (condition, textContent) => {
       return textContent.includes(condition.value);
+    };
+
+    const evaluateGarantie = (condition, textContent) => {
+      const garantie = condition.value.toLowerCase();
+      return textContent.includes(garantie);
+    };
+
+    const evaluateEngagementMax = (condition, textContent) => {
+      const engagement = condition.value.toLowerCase();
+      const reference = condition.reference.toLowerCase();
+      return textContent.includes(engagement) && textContent.includes(reference);
+    };
+
+    const evaluateFranchise = (condition, textContent) => {
+      const franchise = condition.value.toLowerCase();
+      return textContent.includes(franchise);
+    };
+
+    const evaluateAmenagements = (condition, textContent) => {
+      const amenagements = condition.value.toLowerCase();
+      return textContent.includes(amenagements);
+    };
+
+    const evaluateExclusion = (condition, textContent) => {
+      const exclusion = condition.value.toLowerCase();
+      return !textContent.includes(exclusion);
+    };
+
+    const evaluateValeurMax = (condition, textContent) => {
+      const regex = new RegExp(`${condition.reference}.*?(\d+(?:[.,]\d+)?)\s*€`, "i");
+      const match = textContent.match(regex);
+      if (match) {
+        const actualValue = parseFloat(match[1].replace(',', '.'));
+        const conditionValue = parseFloat(condition.value.replace(',', '.'));
+        return condition.operator === "<=" ? actualValue <= conditionValue : false;
+      }
+      return false;
+    };
+
+    const evaluateDommagesMax = (condition, textContent) => {
+      const dommages = condition.value.toLowerCase();
+      return textContent.includes(dommages);
+    };
+
+    const evaluateProtectionLocaux = (condition, textContent) => {
+      const protections = condition.reference.toLowerCase().split(',').map(s => s.trim());
+      return protections.some(protection => textContent.includes(protection));
+    };
+
+    const evaluateSousLimites = (condition, textContent) => {
+      const sousLimites = condition.value.toLowerCase();
+      return textContent.includes(sousLimites);
     };
 
     const generateComments = (test) => {
