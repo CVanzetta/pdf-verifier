@@ -162,6 +162,9 @@ export default {
             console.log(`Failed texte condition for test: ${test.article}`);
             return "Failed";
           }
+        } else {
+          console.warn(`Unknown condition type: ${condition.type}`);
+          return "Failed";
         }
       }
       console.log(`Passed all conditions for test: ${test.article}`);
@@ -192,7 +195,7 @@ export default {
     };
 
     const filterImportantTests = (tests) => {
-      return tests;
+      return tests.filter(test => test.conditions && test.conditions.length > 0);
     };
 
     const toggleSelectAll = () => {
