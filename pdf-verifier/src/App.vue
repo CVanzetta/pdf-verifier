@@ -152,11 +152,6 @@ export default {
             console.log(`Failed montant_max condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "date_presence") {
-          if (!evaluateDatePresence(condition, textContent)) {
-            console.log(`Failed date_presence condition for test: ${test.article}`);
-            return "Failed";
-          }
         } else if (condition.type === "texte_present") {
           if (!evaluateTextePresent(condition, textContent)) {
             console.log(`Failed texte_present condition for test: ${test.article}`);
@@ -172,39 +167,14 @@ export default {
             console.log(`Failed engagement_max condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "franchise") {
-          if (!evaluateFranchise(condition, textContent)) {
-            console.log(`Failed franchise condition for test: ${test.article}`);
-            return "Failed";
-          }
-        } else if (condition.type === "aménagements") {
-          if (!evaluateAmenagements(condition, textContent)) {
-            console.log(`Failed aménagements condition for test: ${test.article}`);
-            return "Failed";
-          }
-        } else if (condition.type === "exclusion") {
-          if (!evaluateExclusion(condition, textContent)) {
-            console.log(`Failed exclusion condition for test: ${test.article}`);
-            return "Failed";
-          }
         } else if (condition.type === "valeur_max") {
           if (!evaluateValeurMax(condition, textContent)) {
             console.log(`Failed valeur_max condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "dommages_max") {
-          if (!evaluateDommagesMax(condition, textContent)) {
-            console.log(`Failed dommages_max condition for test: ${test.article}`);
-            return "Failed";
-          }
-        } else if (condition.type === "protection_locaux") {
-          if (!evaluateProtectionLocaux(condition, textContent)) {
-            console.log(`Failed protection_locaux condition for test: ${test.article}`);
-            return "Failed";
-          }
-        } else if (condition.type === "sous_limites") {
-          if (!evaluateSousLimites(condition, textContent)) {
-            console.log(`Failed sous_limites condition for test: ${test.article}`);
+        } else if (condition.type === "specific_text_presence") {
+          if (!evaluateSpecificTextPresence(condition, textContent)) {
+            console.log(`Failed specific_text_presence condition for test: ${test.article}`);
             return "Failed";
           }
         } else {
@@ -238,11 +208,6 @@ export default {
       return false;
     };
 
-    const evaluateDatePresence = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
-      return regex.test(textContent);
-    };
-
     const evaluateTextePresent = (condition, textContent) => {
       return textContent.includes(condition.value);
     };
@@ -258,21 +223,6 @@ export default {
       return textContent.includes(engagement) && textContent.includes(reference);
     };
 
-    const evaluateFranchise = (condition, textContent) => {
-      const franchise = condition.value.toLowerCase();
-      return textContent.includes(franchise);
-    };
-
-    const evaluateAmenagements = (condition, textContent) => {
-      const amenagements = condition.value.toLowerCase();
-      return textContent.includes(amenagements);
-    };
-
-    const evaluateExclusion = (condition, textContent) => {
-      const exclusion = condition.value.toLowerCase();
-      return !textContent.includes(exclusion);
-    };
-
     const evaluateValeurMax = (condition, textContent) => {
       const regex = new RegExp(`${condition.reference}.*?(\d+(?:[.,]\d+)?)\s*€`, "i");
       const match = textContent.match(regex);
@@ -284,19 +234,8 @@ export default {
       return false;
     };
 
-    const evaluateDommagesMax = (condition, textContent) => {
-      const dommages = condition.value.toLowerCase();
-      return textContent.includes(dommages);
-    };
-
-    const evaluateProtectionLocaux = (condition, textContent) => {
-      const protections = condition.reference.toLowerCase().split(',').map(s => s.trim());
-      return protections.some(protection => textContent.includes(protection));
-    };
-
-    const evaluateSousLimites = (condition, textContent) => {
-      const sousLimites = condition.value.toLowerCase();
-      return textContent.includes(sousLimites);
+    const evaluateSpecificTextPresence = (condition, textContent) => {
+      return condition.values.every(val => textContent.includes(val.toLowerCase()));
     };
 
     const generateComments = (test) => {
