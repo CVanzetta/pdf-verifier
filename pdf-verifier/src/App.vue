@@ -3,23 +3,23 @@
     <v-container>
       <v-card class="ma-5">
         <v-card-title>
-          PDF Verification Tool
+          Outil de Vérification de PDF
         </v-card-title>
         <v-card-text>
-          <v-file-input label="Upload PDF" v-model="pdfFile" outlined></v-file-input>
+          <v-file-input label="Télécharger un PDF" v-model="pdfFile" outlined></v-file-input>
           <v-btn color="primary" @click="analyzePdf" :loading="loading" :disabled="loading || !pdfFile">
-            Run Selected Tests
+            Exécuter les Tests Sélectionnés
           </v-btn>
         </v-card-text>
       </v-card>
 
       <v-card class="ma-5">
         <v-card-title>
-          Select Tests to Run
+          Sélectionner les Tests à Exécuter
         </v-card-title>
         <v-card-text>
           <v-checkbox
-            label="Select All Tests"
+            label="Sélectionner Tous les Tests"
             v-model="selectAll"
             @change="toggleSelectAll"
           ></v-checkbox>
@@ -43,7 +43,7 @@
 
       <v-card v-if="results.length > 0" class="ma-5">
         <v-card-title>
-          Test Results
+          Résultats des Tests
         </v-card-title>
         <v-card-text>
           <v-data-table :headers="tableHeaders" :items="results" class="elevation-1">
@@ -76,29 +76,29 @@ export default {
     const selectAll = ref(false);
     const tableHeaders = [
       { text: 'Test', value: 'categorie' },
-      { text: 'Status', value: 'status' },
-      { text: 'Comments', value: 'comments' },
+      { text: 'Statut', value: 'status' },
+      { text: 'Commentaires', value: 'comments' },
     ];
 
     const analyzePdf = async () => {
-      console.log("PDF analysis started...");
+      console.log("Analyse du PDF commencée...");
 
       if (!pdfFile.value) {
-        console.error("Please upload a PDF file before running the analysis.");
+        console.error("Veuillez télécharger un fichier PDF avant de lancer l'analyse.");
         return;
       }
 
-      if (pdfFile.value.size > 10 * 1024 * 1024) { // Limit file size to 10MB
-        console.error("The uploaded file is too large. Please upload a file smaller than 10MB.");
+      if (pdfFile.value.size > 10 * 1024 * 1024) { // Limite de taille de fichier à 10 Mo
+        console.error("Le fichier téléchargé est trop volumineux. Veuillez télécharger un fichier de moins de 10 Mo.");
         return;
       }
 
       if (selectedTests.value.length === 0) {
-        console.error("No tests selected. Please select at least one test to run.");
+        console.error("Aucun test sélectionné. Veuillez sélectionner au moins un test à exécuter.");
         return;
       }
 
-      console.log("Selected Tests:", selectedTests.value);
+      console.log("Tests sélectionnés :", selectedTests.value);
       loading.value = true;
 
       try {
@@ -107,22 +107,22 @@ export default {
         let textContent = "";
 
         for (let i = 1; i <= pdf.numPages; i++) {
-          console.log(`Analyzing page ${i} of ${pdf.numPages}...`);
+          console.log(`Analyse de la page ${i} sur ${pdf.numPages}...`);
           const page = await pdf.getPage(i);
           const text = await page.getTextContent();
           textContent += text.items.map(item => item.str).join(" ") + " ";
         }
 
         textContent = preprocessText(textContent);
-        console.log("Extracted PDF Content:", textContent);
+        console.log("Contenu extrait du PDF :", textContent);
 
         results.value = selectedTests.value.map((test) => {
           const status = evaluateEditique(test, textContent);
           return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
         });
-        console.log("Results after analysis:", results.value);
+        console.log("Résultats après analyse :", results.value);
       } catch (error) {
-        console.error("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
+        console.error("Une erreur est survenue lors de l'analyse du PDF. Veuillez vous assurer que le fichier n'est pas corrompu.");
         console.error(error);
       } finally {
         loading.value = false;
@@ -132,57 +132,57 @@ export default {
     const preprocessText = (text) => {
       return text
         .toLowerCase()
-        .normalize("NFD").replace(/[̀-ͯ]/g, "") // Remove accents
-        .replace(/\s+/g, " ") // Normalize spaces
+        .normalize("NFD").replace(/[̀-ͯ]/g, "") // Suppression des accents
+        .replace(/\s+/g, " ") // Normalisation des espaces
         .trim();
     };
 
     const evaluateEditique = (test, textContent) => {
-      console.log(`Evaluating test: ${test.article}`);
+      console.log(`Évaluation du test : ${test.article}`);
       const conditions = test.conditions;
       for (const condition of conditions) {
-        console.log(`Checking condition type: ${condition.type}`);
+        console.log(`Vérification du type de condition : ${condition.type}`);
         if (condition.type === "surface_max") {
           if (!evaluateSurfaceMax(condition, textContent)) {
-            console.log(`Failed surface_max condition for test: ${test.article}`);
+            console.log(`Échec de la condition surface_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "montant_max") {
           if (!evaluateMontantMax(condition, textContent)) {
-            console.log(`Failed montant_max condition for test: ${test.article}`);
+            console.log(`Échec de la condition montant_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "texte_present") {
           if (!evaluateTextePresent(condition, textContent)) {
-            console.log(`Failed texte_present condition for test: ${test.article}`);
+            console.log(`Échec de la condition texte_present pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "garantie") {
           if (!evaluateGarantie(condition, textContent)) {
-            console.log(`Failed garantie condition for test: ${test.article}`);
+            console.log(`Échec de la condition garantie pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "engagement_max") {
           if (!evaluateEngagementMax(condition, textContent)) {
-            console.log(`Failed engagement_max condition for test: ${test.article}`);
+            console.log(`Échec de la condition engagement_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "valeur_max") {
           if (!evaluateValeurMax(condition, textContent)) {
-            console.log(`Failed valeur_max condition for test: ${test.article}`);
+            console.log(`Échec de la condition valeur_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "specific_text_presence") {
           if (!evaluateSpecificTextPresence(condition, textContent)) {
-            console.log(`Failed specific_text_presence condition for test: ${test.article}`);
+            console.log(`Échec de la condition specific_text_presence pour le test : ${test.article}`);
             return "Failed";
           }
         } else {
-          console.warn(`Unknown condition type: ${condition.type}`);
+          console.warn(`Type de condition inconnu : ${condition.type}`);
           return "Failed";
         }
       }
-      console.log(`Passed all conditions for test: ${test.article}`);
+      console.log(`Toutes les conditions sont validées pour le test : ${test.article}`);
       return "Passed";
     };
 
@@ -239,7 +239,7 @@ export default {
     };
 
     const generateComments = (test) => {
-      return `The condition ${test.article} was not met. Please check the requirements.`;
+      return `La condition ${test.article} n'a pas été respectée. Veuillez vérifier les exigences.`;
     };
 
     const filterImportantTests = (tests) => {
@@ -252,7 +252,7 @@ export default {
       } else {
         selectedTests.value = [];
       }
-      console.log("Selected Tests after toggleSelectAll:", selectedTests.value);
+      console.log("Tests sélectionnés après toggleSelectAll :", selectedTests.value);
     };
 
     const toggleTestSelection = (test) => {
@@ -262,13 +262,13 @@ export default {
       } else {
         selectedTests.value.splice(index, 1);
       }
-      console.log("Updated Selected Tests after toggleTestSelection:", selectedTests.value);
+      console.log("Tests sélectionnés mis à jour après toggleTestSelection :", selectedTests.value);
     };
 
     onMounted(async () => {
-      console.log("Mounted and loading editique tests...");
+      console.log("Monté et chargement des tests d'édition...");
       editiqueTests.categories = await testData.categories;
-      console.log("Loaded editique tests:", editiqueTests.categories);
+      console.log("Tests d'édition chargés :", editiqueTests.categories);
     });
 
     return {
