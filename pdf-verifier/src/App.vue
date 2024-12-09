@@ -147,19 +147,34 @@ export default {
             console.log(`Failed surface_max condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "montant") {
-          if (!evaluateMontant(condition, textContent)) {
-            console.log(`Failed montant condition for test: ${test.article}`);
+        } else if (condition.type === "montant_max") {
+          if (!evaluateMontantMax(condition, textContent)) {
+            console.log(`Failed montant_max condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "date") {
-          if (!evaluateDate(condition, textContent)) {
-            console.log(`Failed date condition for test: ${test.article}`);
+        } else if (condition.type === "texte_present") {
+          if (!evaluateTextePresent(condition, textContent)) {
+            console.log(`Failed texte_present condition for test: ${test.article}`);
             return "Failed";
           }
-        } else if (condition.type === "texte") {
-          if (!evaluateTexte(condition, textContent)) {
-            console.log(`Failed texte condition for test: ${test.article}`);
+        } else if (condition.type === "garantie") {
+          if (!evaluateGarantie(condition, textContent)) {
+            console.log(`Failed garantie condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "engagement_max") {
+          if (!evaluateEngagementMax(condition, textContent)) {
+            console.log(`Failed engagement_max condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "valeur_max") {
+          if (!evaluateValeurMax(condition, textContent)) {
+            console.log(`Failed valeur_max condition for test: ${test.article}`);
+            return "Failed";
+          }
+        } else if (condition.type === "specific_text_presence") {
+          if (!evaluateSpecificTextPresence(condition, textContent)) {
+            console.log(`Failed specific_text_presence condition for test: ${test.article}`);
             return "Failed";
           }
         } else {
@@ -172,22 +187,55 @@ export default {
     };
 
     const evaluateSurfaceMax = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
-      return regex.test(textContent);
+      const regex = new RegExp(`${condition.reference}.*?(\d+)\s*m²`, "i");
+      const match = textContent.match(regex);
+      if (match) {
+        const actualSurface = parseInt(match[1], 10);
+        const conditionSurface = parseInt(condition.value, 10);
+        return condition.operator === "<=" ? actualSurface <= conditionSurface : false;
+      }
+      return false;
     };
 
-    const evaluateMontant = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
-      return regex.test(textContent);
+    const evaluateMontantMax = (condition, textContent) => {
+      const regex = new RegExp(`${condition.reference}.*?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*FFB`, "i");
+      const match = textContent.match(regex);
+      if (match) {
+        const actualAmount = parseFloat(match[1].replace(/[,]/g, ''));
+        const conditionAmount = parseFloat(condition.value);
+        return condition.operator === "<=" ? actualAmount <= conditionAmount : false;
+      }
+      return false;
     };
 
-    const evaluateDate = (condition, textContent) => {
-      const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
-      return regex.test(textContent);
-    };
-
-    const evaluateTexte = (condition, textContent) => {
+    const evaluateTextePresent = (condition, textContent) => {
       return textContent.includes(condition.value);
+    };
+
+    const evaluateGarantie = (condition, textContent) => {
+      const garantie = condition.value.toLowerCase();
+      return textContent.includes(garantie);
+    };
+
+    const evaluateEngagementMax = (condition, textContent) => {
+      const engagement = condition.value.toLowerCase();
+      const reference = condition.reference.toLowerCase();
+      return textContent.includes(engagement) && textContent.includes(reference);
+    };
+
+    const evaluateValeurMax = (condition, textContent) => {
+      const regex = new RegExp(`${condition.reference}.*?(\d+(?:[.,]\d+)?)\s*€`, "i");
+      const match = textContent.match(regex);
+      if (match) {
+        const actualValue = parseFloat(match[1].replace(',', '.'));
+        const conditionValue = parseFloat(condition.value.replace(',', '.'));
+        return condition.operator === "<=" ? actualValue <= conditionValue : false;
+      }
+      return false;
+    };
+
+    const evaluateSpecificTextPresence = (condition, textContent) => {
+      return condition.values.every(val => textContent.includes(val.toLowerCase()));
     };
 
     const generateComments = (test) => {
