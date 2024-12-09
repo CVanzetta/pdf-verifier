@@ -137,6 +137,8 @@ export default {
         .trim();
     };
 
+    //TODOO faire un on off pour les logs si on veut débeug si non ne pas les afficher 
+
     const evaluateEditique = (test, textContent) => {
       console.log(`Évaluation du test : ${test.article}`);
       const conditions = test.conditions;
