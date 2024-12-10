@@ -109,32 +109,32 @@ export default {
       debugLog("Tests sélectionnés :", selectedTests.value);
       loading.value = true;
 
-      try {
-        const arrayBuffer = await pdfFile.value.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let textContent = "";
+       try {
+         const arrayBuffer = await pdfFile.value.arrayBuffer();
+         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+         let textContent = "";
 
-        for (let i = 1; i <= pdf.numPages; i++) {
-          debugLog(`Analyse de la page ${i} sur ${pdf.numPages}...`);
-          const page = await pdf.getPage(i);
-          const text = await page.getTextContent();
-          textContent += text.items.map(item => item.str).join(" ") + " ";
-        }
+         for (let i = 1; i <= pdf.numPages; i++) {
+           debugLog(`Analyse de la page ${i} sur ${pdf.numPages}...`);
+           const page = await pdf.getPage(i);
+           const text = await page.getTextContent();
+           textContent += text.items.map(item => item.str).join(" ") + " ";
+         }
 
-        textContent = preprocessText(textContent);
-        debugLog("Contenu extrait du PDF :", textContent);
+         textContent = preprocessText(textContent);
+         debugLog("Contenu extrait du PDF :", textContent);
 
-        results.value = selectedTests.value.map((test) => {
-          const status = evaluateEditique(test, textContent);
-          return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
-        });
-        debugLog("Résultats après analyse :", results.value);
-      } catch (error) {
-        console.error("Une erreur est survenue lors de l'analyse du PDF. Veuillez vous assurer que le fichier n'est pas corrompu.");
-        console.error(error);
-      } finally {
-        loading.value = false;
-      }
+         results.value = selectedTests.value.map((test) => {
+           const status = evaluateEditique(test, textContent);
+           return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
+         });
+         debugLog("Résultats après analyse :", results.value);
+       } catch (error) {
+         console.error("Une erreur est survenue lors de l'analyse du PDF. Veuillez vous assurer que le fichier n'est pas corrompu.");
+         console.error(error);
+       } finally {
+         loading.value = false;
+       }
     };
 
     const preprocessText = (text) => {
