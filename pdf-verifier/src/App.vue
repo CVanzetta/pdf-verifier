@@ -10,6 +10,7 @@
           <v-btn color="primary" @click="analyzePdf" :loading="loading" :disabled="loading || !pdfFile">
             Exécuter les Tests Sélectionnés
           </v-btn>
+          <v-switch label="Mode Débogage" v-model="debugMode" class="mt-3"></v-switch>
         </v-card-text>
       </v-card>
 
@@ -74,14 +75,21 @@ export default {
     const results = ref([]);
     const loading = ref(false);
     const selectAll = ref(false);
+    const debugMode = ref(true); // Toggle for debug logs
     const tableHeaders = [
       { text: 'Test', value: 'categorie' },
       { text: 'Statut', value: 'status' },
       { text: 'Commentaires', value: 'comments' },
     ];
 
+    const debugLog = (message, ...optionalParams) => {
+      if (debugMode.value) {
+        console.log(message, ...optionalParams);
+      }
+    };
+
     const analyzePdf = async () => {
-      console.log("Analyse du PDF commencée...");
+      debugLog("Analyse du PDF commencée...");
 
       if (!pdfFile.value) {
         console.error("Veuillez télécharger un fichier PDF avant de lancer l'analyse.");
@@ -98,7 +106,7 @@ export default {
         return;
       }
 
-      console.log("Tests sélectionnés :", selectedTests.value);
+      debugLog("Tests sélectionnés :", selectedTests.value);
       loading.value = true;
 
       try {
@@ -107,20 +115,20 @@ export default {
         let textContent = "";
 
         for (let i = 1; i <= pdf.numPages; i++) {
-          console.log(`Analyse de la page ${i} sur ${pdf.numPages}...`);
+          debugLog(`Analyse de la page ${i} sur ${pdf.numPages}...`);
           const page = await pdf.getPage(i);
           const text = await page.getTextContent();
           textContent += text.items.map(item => item.str).join(" ") + " ";
         }
 
         textContent = preprocessText(textContent);
-        console.log("Contenu extrait du PDF :", textContent);
+        debugLog("Contenu extrait du PDF :", textContent);
 
         results.value = selectedTests.value.map((test) => {
           const status = evaluateEditique(test, textContent);
           return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
         });
-        console.log("Résultats après analyse :", results.value);
+        debugLog("Résultats après analyse :", results.value);
       } catch (error) {
         console.error("Une erreur est survenue lors de l'analyse du PDF. Veuillez vous assurer que le fichier n'est pas corrompu.");
         console.error(error);
@@ -137,46 +145,44 @@ export default {
         .trim();
     };
 
-    //TODOO faire un on off pour les logs si on veut débeug si non ne pas les afficher 
-
     const evaluateEditique = (test, textContent) => {
-      console.log(`Évaluation du test : ${test.article}`);
+      debugLog(`Évaluation du test : ${test.article}`);
       const conditions = test.conditions;
       for (const condition of conditions) {
-        console.log(`Vérification du type de condition : ${condition.type}`);
+        debugLog(`Vérification du type de condition : ${condition.type}`);
         if (condition.type === "surface_max") {
           if (!evaluateSurfaceMax(condition, textContent)) {
-            console.log(`Échec de la condition surface_max pour le test : ${test.article}`);
+            debugLog(`Échec de la condition surface_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "montant_max") {
           if (!evaluateMontantMax(condition, textContent)) {
-            console.log(`Échec de la condition montant_max pour le test : ${test.article}`);
+            debugLog(`Échec de la condition montant_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "texte_present") {
           if (!evaluateTextePresent(condition, textContent)) {
-            console.log(`Échec de la condition texte_present pour le test : ${test.article}`);
+            debugLog(`Échec de la condition texte_present pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "garantie") {
           if (!evaluateGarantie(condition, textContent)) {
-            console.log(`Échec de la condition garantie pour le test : ${test.article}`);
+            debugLog(`Échec de la condition garantie pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "engagement_max") {
           if (!evaluateEngagementMax(condition, textContent)) {
-            console.log(`Échec de la condition engagement_max pour le test : ${test.article}`);
+            debugLog(`Échec de la condition engagement_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "valeur_max") {
           if (!evaluateValeurMax(condition, textContent)) {
-            console.log(`Échec de la condition valeur_max pour le test : ${test.article}`);
+            debugLog(`Échec de la condition valeur_max pour le test : ${test.article}`);
             return "Failed";
           }
         } else if (condition.type === "specific_text_presence") {
           if (!evaluateSpecificTextPresence(condition, textContent)) {
-            console.log(`Échec de la condition specific_text_presence pour le test : ${test.article}`);
+            debugLog(`Échec de la condition specific_text_presence pour le test : ${test.article}`);
             return "Failed";
           }
         } else {
@@ -184,7 +190,7 @@ export default {
           return "Failed";
         }
       }
-      console.log(`Toutes les conditions sont validées pour le test : ${test.article}`);
+      debugLog(`Toutes les conditions sont validées pour le test : ${test.article}`);
       return "Passed";
     };
 
@@ -203,7 +209,7 @@ export default {
       const regex = new RegExp(`${condition.reference}.*?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*FFB`, "i");
       const match = textContent.match(regex);
       if (match) {
-        const actualAmount = parseFloat(match[1].replace(/[,]/g, ''));
+        const actualAmount = parseFloat(match[1].replace(/[.,]/g, ''));
         const conditionAmount = parseFloat(condition.value);
         return condition.operator === "<=" ? actualAmount <= conditionAmount : false;
       }
@@ -254,7 +260,7 @@ export default {
       } else {
         selectedTests.value = [];
       }
-      console.log("Tests sélectionnés après toggleSelectAll :", selectedTests.value);
+      debugLog("Tests sélectionnés après toggleSelectAll :", selectedTests.value);
     };
 
     const toggleTestSelection = (test) => {
@@ -264,13 +270,13 @@ export default {
       } else {
         selectedTests.value.splice(index, 1);
       }
-      console.log("Tests sélectionnés mis à jour après toggleTestSelection :", selectedTests.value);
+      debugLog("Tests sélectionnés mis à jour après toggleTestSelection :", selectedTests.value);
     };
 
     onMounted(async () => {
-      console.log("Monté et chargement des tests d'édition...");
+      debugLog("Monté et chargement des tests d'édition...");
       editiqueTests.categories = await testData.categories;
-      console.log("Tests d'édition chargés :", editiqueTests.categories);
+      debugLog("Tests d'édition chargés :", editiqueTests.categories);
     });
 
     return {
@@ -285,6 +291,7 @@ export default {
       selectAll,
       toggleSelectAll,
       toggleTestSelection,
+      debugMode,
     };
   },
 };
