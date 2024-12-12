@@ -14,8 +14,7 @@
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^4.9.124",
     "regenerator-runtime": "^0.14.1",
-    "vue": "^3.5.13",
-    "vuetify": "^3.7.4"
+    "vue": "^3.5.13"
   },
   "devDependencies": {
     "@babel/cli": "^7.25.9",
