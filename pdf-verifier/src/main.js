@@ -1,47 +1,32 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import { createVuetify } from 'vuetify';
-import 'vuetify/styles';
-import '@mdi/font/css/materialdesignicons.css';
+import Material from '@primevue/themes/material';
+import PrimeVue from 'primevue/config'
 
-import {
-VApp,
-VContainer,
-VCard,
-VCardTitle,
-VCardText,
-VFileInput,
-VBtn,
-VList,
-VListItem,
-VExpansionPanels,
-VExpansionPanel,
-VExpansionPanelTitle,
-VExpansionPanelText,
-VCheckbox,
-VIcon,
-VDataTable,
-} from 'vuetify/components';
 
-const vuetify = createVuetify({
-components: {
-    VApp,
-    VContainer,
-    VCard,
-    VCardTitle,
-    VCardText,
-    VFileInput,
-    VBtn,
-    VList,
-    VListItem,
-    VExpansionPanels,
-    VExpansionPanel,
-    VExpansionPanelTitle,
-    VExpansionPanelText,
-    VCheckbox,
-    VIcon,
-    VDataTable,
-},
+import Button from 'primevue/button';        
+import Card from 'primevue/card';            
+import Checkbox from 'primevue/checkbox';    
+import Accordion from 'primevue/accordion';  
+import AccordionTab from 'primevue/accordiontab'; 
+
+const app = createApp(App);
+
+app.use(PrimeVue, { 
+    theme: {
+        preset: Material,
+        options: { 
+            prefix: 'p', 
+            darkModeSelector: 'false', 
+            cssLayer: false 
+        }
+    } 
+    
 });
+app.component('Button', Button);       
+app.component('Card', Card);           
+app.component('Checkbox', Checkbox);   
+app.component('Accordion', Accordion); 
+app.component('AccordionTab', AccordionTab);
 
-createApp(App).use(vuetify).mount('#app');
+app.mount('#app');
