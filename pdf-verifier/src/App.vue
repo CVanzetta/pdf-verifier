@@ -1,16 +1,25 @@
 <template>
-  <div class="component">
+  <div 
+    class="component" 
+    @dragover.prevent="onDragOver" 
+    @drop.prevent="onDrop" 
+    :class="{ 'dragging': isDragging }">
     <div class="grid">
       <!-- PDF Verification Tool -->
       <div class="col-12">
         <Card header="PDF Verification Tool" class="mb-5">
           <template #content>
-            <FileUpload 
-              mode="basic" 
-              choose-label="Upload PDF"
-              v-model="pdfFile" 
-              accept=".pdf">
-            </FileUpload>
+            <div class="upload-container">
+              <FileUpload 
+                mode="advanced" 
+                choose-label="Upload or Drag and Drop PDF Here"
+                drag-drop-label=""
+                v-model="pdfFile" 
+                accept=".pdf"
+                @select="onFileSelect">
+              </FileUpload>
+              <p v-if="pdfFile" class="mt-2">File selected: {{ pdfFile.name }}</p>
+            </div>
             <Button 
               label="Run Selected Tests" 
               icon="pi pi-play" 
@@ -29,9 +38,9 @@
           <template #content>
             <Checkbox 
               :binary="true" 
-              v-model="selectedTests" 
-              :value="test" 
-              @change="toggleTestSelection(test)">
+              v-model="selectAll" 
+              label="Select All Tests" 
+              @change="toggleSelectAll">
             </Checkbox>
 
             <Accordion :value="['0']" multiple>
@@ -45,8 +54,8 @@
                     <li v-for="test in filterImportantTests(category.tests)" :key="test.id">
                       <Checkbox 
                         v-model="selectedTests" 
-                        :value="test" 
-                        @change="toggleTestSelection(test)">
+                        :value="test.id" 
+                        @change="toggleTestSelection">
                       </Checkbox>
                       <span>{{ test.categorie + ' - ' + test.article }}</span>
                       <i class="pi pi-info-circle" style="margin-left: 10px; color: blue;"></i>
@@ -104,8 +113,9 @@ import testData from '@/assets/Tests.json';
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const pdfFile = ref(null);
+const isDragging = ref(false);
 const editiqueTests = reactive(testData);
-const selectedTests = ref([]);
+const selectedTests = ref([]); // Store selected test IDs
 const results = ref([]);
 const selectAll = ref(false);
 const loading = ref(false);
@@ -154,7 +164,8 @@ const analyzePdf = async () => {
     textContent = preprocessText(textContent);
     console.log("Extracted PDF Content:", textContent);
 
-    results.value = selectedTests.value.map((test) => {
+    results.value = selectedTests.value.map((testId) => {
+      const test = editiqueTests.categories.flatMap(cat => cat.tests).find(t => t.id === testId);
       const status = evaluateEditique(test, textContent);
       return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
     });
@@ -164,6 +175,36 @@ const analyzePdf = async () => {
     console.error(error);
   } finally {
     loading.value = false;
+  }
+};
+
+const onDragOver = () => {
+  isDragging.value = true;
+};
+
+const onDrop = (event) => {
+  isDragging.value = false;
+  const files = event.dataTransfer.files;
+  if (files.length > 0) {
+    const file = files[0];
+    if (file.type === "application/pdf") {
+      pdfFile.value = file;
+      console.log("PDF file dropped:", file.name);
+      if (selectedTests.value.length > 0) {
+        analyzePdf();
+      }
+    } else {
+      console.error("Only PDF files are allowed.");
+    }
+  }
+};
+
+const onFileSelect = () => {
+  if (pdfFile.value) {
+    console.log("File uploaded via button:", pdfFile.value.name);
+    if (selectedTests.value.length > 0) {
+      analyzePdf();
+    }
   }
 };
 
@@ -211,17 +252,17 @@ const generateComments = (test) => {
 
 const toggleSelectAll = () => {
   if (selectAll.value) {
-    selectedTests.value = editiqueTests.categories.flatMap((category) => category.tests);
+    selectedTests.value = editiqueTests.categories.flatMap((category) => category.tests.map(test => test.id));
   } else {
     selectedTests.value = [];
   }
 };
 
-const toggleTestSelection = (test) => {
-  if (selectedTests.value.includes(test)) {
-    selectedTests.value = selectedTests.value.filter((t) => t !== test);
+const toggleTestSelection = (testId) => {
+  if (selectedTests.value.includes(testId)) {
+    selectedTests.value = selectedTests.value.filter((id) => id !== testId);
   } else {
-    selectedTests.value.push(test);
+    selectedTests.value.push(testId);
   }
 };
 
@@ -236,5 +277,14 @@ const filterImportantTests = (tests) => {
 }
 .p-m-3 {
   margin: 1rem;
+}
+.upload-container {
+  border: 2px dashed #007bff;
+  padding: 1rem;
+  text-align: center;
+  background-color: rgba(0, 123, 255, 0.05);
+}
+.dragging {
+  background-color: rgba(0, 123, 255, 0.1);
 }
 </style>
