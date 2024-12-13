@@ -1,25 +1,60 @@
 <template>
   <div 
-    class="component" 
-    @dragover.prevent="onDragOver" 
-    @drop.prevent="onDrop" 
-    :class="{ 'dragging': isDragging }">
+    class="component">
     <div class="grid">
       <!-- PDF Verification Tool -->
       <div class="col-12">
         <Card header="PDF Verification Tool" class="mb-5">
           <template #content>
-            <div class="upload-container">
-              <FileUpload 
-                mode="advanced" 
-                choose-label="Upload or Drag and Drop PDF Here"
-                drag-drop-label=""
-                v-model="pdfFile" 
-                accept=".pdf"
-                @select="onFileSelect">
-              </FileUpload>
-              <p v-if="pdfFile" class="mt-2">File selected: {{ pdfFile.name }}</p>
-            </div>
+            <FileUpload 
+              name="pdf[]" 
+              accept="application/pdf" 
+              :maxFileSize="10 * 1024 * 1024" 
+              custom-upload
+              @select="onFileSelect" 
+              @remove="onRemoveFile">
+              <template #header="{ chooseCallback, clearCallback, files }">
+                <div class="flex justify-between items-center">
+                  <div class="flex gap-2">
+                    <Button 
+                      label="Choose File" 
+                      icon="pi pi-folder-open" 
+                      class="p-button-text" 
+                      @click="chooseCallback">
+                    </Button>
+                    <Button 
+                      label="Clear" 
+                      icon="pi pi-trash" 
+                      class="p-button-text" 
+                      @click="clearCallback" 
+                      :disabled="!files || files.length === 0">
+                    </Button>
+                  </div>
+                  <span v-if="pdfFile">Selected File: {{ pdfFile.name }}</span>
+                </div>
+              </template>
+              <template #content="{ files }">
+                <div v-if="files.length > 0" class="mt-4">
+                  <ul>
+                    <li v-for="file in files" :key="file.name" class="flex justify-between items-center">
+                      <span>{{ file.name }}</span>
+                      <Button 
+                        icon="pi pi-times" 
+                        class="p-button-text p-button-danger" 
+                        @click="$emit('remove', file)">
+                      </Button>
+                    </li>
+                  </ul>
+                </div>
+              </template>
+              <template #empty>
+                <div class="flex flex-col items-center">
+                  <i class="pi pi-cloud-upload text-4xl"></i>
+                  <p class="mt-2">Drag and drop a PDF file here or click "Choose File"</p>
+                </div>
+              </template>
+            </FileUpload>
+
             <Button 
               label="Run Selected Tests" 
               icon="pi pi-play" 
@@ -178,34 +213,16 @@ const analyzePdf = async () => {
   }
 };
 
-const onDragOver = () => {
-  isDragging.value = true;
-};
-
-const onDrop = (event) => {
-  isDragging.value = false;
-  const files = event.dataTransfer.files;
-  if (files.length > 0) {
-    const file = files[0];
-    if (file.type === "application/pdf") {
-      pdfFile.value = file;
-      console.log("PDF file dropped:", file.name);
-      if (selectedTests.value.length > 0) {
-        analyzePdf();
-      }
-    } else {
-      console.error("Only PDF files are allowed.");
-    }
+const onFileSelect = (event) => {
+  if (event.files.length > 0) {
+    pdfFile.value = event.files[0];
+    console.log("File selected:", pdfFile.value.name);
   }
 };
 
-const onFileSelect = () => {
-  if (pdfFile.value) {
-    console.log("File uploaded via button:", pdfFile.value.name);
-    if (selectedTests.value.length > 0) {
-      analyzePdf();
-    }
-  }
+const onRemoveFile = () => {
+  pdfFile.value = null;
+  console.log("File removed");
 };
 
 const evaluateEditique = (test, textContent) => {
