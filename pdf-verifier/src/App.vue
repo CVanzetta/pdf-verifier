@@ -51,8 +51,10 @@
               </template>
               <template #empty>
                 <div class="flex flex-col items-center">
-                  <i class="pi pi-cloud-upload text-4xl"></i>
-                  <p class="mt-2">Drag and drop a PDF file here or click "Choose File"</p>
+                  <i
+                    class="pi pi-cloud-upload !border-2 !rounded-full !p-8 !text-4xl !text-muted-color">
+                  </i>
+                  <p class="mt-6 mb-0">Drag and drop files to here to upload.</p>
                 </div>
               </template>
             </FileUpload>
