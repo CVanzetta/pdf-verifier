@@ -153,7 +153,7 @@ import testData from '@/assets/Tests.json';
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const pdfFile = ref(null);
-// const isDragging = ref(false);
+const isDragging = ref(false);
 const editiqueTests = reactive(testData);
 const selectedTests = ref([]); // Store selected test IDs
 const results = ref([]);
