@@ -34,23 +34,26 @@
               @change="toggleSelectAll">
             </Checkbox>
 
-            <Accordion>
-              <AccordionTab 
+            <Accordion :value="['0']" multiple>
+              <AccordionPanel 
                 v-for="(category, index) in editiqueTests.categories" 
-                :key="index" 
-                :header="category.nom">
-                <ul class="list mt-2">
-                  <li v-for="test in filterImportantTests(category.tests)" :key="test.id">
-                    <Checkbox 
-                      v-model="selectedTests" 
-                      :value="test" 
-                      @change="toggleTestSelection(test)">
-                    </Checkbox>
-                    <span>{{ test.categorie + ' - ' + test.article }}</span>
-                    <i class="pi pi-info-circle" style="margin-left: 10px; color: blue;"></i>
-                  </li>
-                </ul>
-              </AccordionTab>
+                :key="index"
+                :value="index.toString()">
+                <AccordionHeader>{{ category.nom }}</AccordionHeader>
+                <AccordionContent>
+                  <ul class="list mt-2">
+                    <li v-for="test in filterImportantTests(category.tests)" :key="test.id">
+                      <Checkbox 
+                        v-model="selectedTests" 
+                        :value="test" 
+                        @change="toggleTestSelection(test)">
+                      </Checkbox>
+                      <span>{{ test.categorie + ' - ' + test.article }}</span>
+                      <i class="pi pi-info-circle" style="margin-left: 10px; color: blue;"></i>
+                    </li>
+                  </ul>
+                </AccordionContent>
+              </AccordionPanel>
             </Accordion>
           </template>
         </Card>
@@ -89,7 +92,9 @@ import FileUpload from 'primevue/fileupload';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Accordion from 'primevue/accordion';
-import AccordionTab from 'primevue/accordiontab';
+import AccordionPanel from 'primevue/accordionpanel';
+import AccordionHeader from 'primevue/accordionheader';
+import AccordionContent from 'primevue/accordioncontent';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Card from 'primevue/card';
@@ -224,9 +229,6 @@ const filterImportantTests = (tests) => {
   return tests.filter((test) => test.conditions && test.conditions.length > 0);
 };
 </script>
-
-
-
 
 <style>
 .p-mb-5 {
