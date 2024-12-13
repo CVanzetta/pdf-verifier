@@ -146,6 +146,7 @@ import AccordionContent from 'primevue/accordioncontent';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Card from 'primevue/card';
+import 'primeicons/primeicons.css';
 import * as pdfjsLib from 'pdfjs-dist';
 import testData from '@/assets/Tests.json';
 
