@@ -28,10 +28,10 @@
         <Card header="Select Tests to Run" class="mb-5">
           <template #content>
             <Checkbox 
-              binary="true" 
-              v-model="selectAll" 
-              label="Select All Tests" 
-              @change="toggleSelectAll">
+              :binary="true" 
+              v-model="selectedTests" 
+              :value="test" 
+              @change="toggleTestSelection(test)">
             </Checkbox>
 
             <Accordion :value="['0']" multiple>
