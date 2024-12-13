@@ -14,19 +14,21 @@
               @select="onFileSelect" 
               @remove="onRemoveFile">
               <template #header="{ chooseCallback, clearCallback, files }">
-                <div class="flex justify-between items-center">
+                <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
                   <div class="flex gap-2">
                     <Button 
-                      label="Choose File" 
+                      @click="chooseCallback" 
                       icon="pi pi-folder-open" 
-                      class="p-button-text" 
-                      @click="chooseCallback">
+                      rounded 
+                      outlined 
+                      severity="secondary">
                     </Button>
                     <Button 
-                      label="Clear" 
-                      icon="pi pi-trash" 
-                      class="p-button-text" 
                       @click="clearCallback" 
+                      icon="pi pi-trash" 
+                      rounded 
+                      outlined 
+                      severity="danger" 
                       :disabled="!files || files.length === 0">
                     </Button>
                   </div>
