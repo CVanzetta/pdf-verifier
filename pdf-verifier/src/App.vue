@@ -94,7 +94,7 @@
               </label>
             </div>
 
-            <Accordion :value="['0']" multiple>
+            <Accordion :value= multiple>
               <AccordionPanel
                 v-for="(category, index) in editiqueTests.categories"
                 :key="index"
