@@ -61,7 +61,7 @@
                   <div class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32">
                     <i class="pi pi-cloud-upload text-gray-500" style="font-size:4rem;"></i>
                   </div>
-                  <p class="mt-6 mb-0 text-lg font-semibold">Glissez-déposez les fichiers ici</p>
+                  <p class="mt-6 mb-0 text-lg font-semibold">Glissez-déposez le fichiers ici</p>
                 </div>
               </template>
             </FileUpload>
