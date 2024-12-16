@@ -207,9 +207,14 @@ const analyzePdf = async () => {
 
     results.value = selectedTests.value.map((testId) => {
       const test = editiqueTests.categories.flatMap(cat => cat.tests).find(t => t.id === testId);
+      if (!test) {
+        console.error(`Test with ID ${testId} not found.`);
+        return null;
+      }
       const status = evaluateEditique(test, textContent);
       return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
-    });
+    }).filter(result => result !== null); // Remove null results
+
     console.log("Results after analysis:", results.value);
   } catch (error) {
     console.error("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
@@ -221,14 +226,11 @@ const analyzePdf = async () => {
 
 const onFileSelect = (event) => {
   if (event.files.length > 0) {
-    // Remplace toujours l'ancien fichier par le nouveau
     pdfFile.value = event.files[0];
-    event.files.splice(0, event.files.length, pdfFile.value); // Mettez à jour la liste des fichiers dans FileUpload
+    event.files.splice(0, event.files.length, pdfFile.value); // Update FileUpload internal list
     console.log("File selected:", pdfFile.value.name);
   }
 };
-
-
 
 const onRemoveFile = () => {
   pdfFile.value = null;
@@ -236,41 +238,58 @@ const onRemoveFile = () => {
 };
 
 const evaluateEditique = (test, textContent) => {
+  console.log("Evaluating test:", test);
+  console.log("Text content:", textContent);
+
   const conditions = test.conditions;
   for (const condition of conditions) {
+    console.log("Checking condition:", condition);
     if (condition.type === "surface_max" && !evaluateSurfaceMax(condition, textContent)) {
+      console.log("Condition failed: surface_max");
       return "Failed";
     }
     if (condition.type === "montant" && !evaluateMontant(condition, textContent)) {
+      console.log("Condition failed: montant");
       return "Failed";
     }
     if (condition.type === "date" && !evaluateDate(condition, textContent)) {
+      console.log("Condition failed: date");
       return "Failed";
     }
     if (condition.type === "texte" && !evaluateTexte(condition, textContent)) {
+      console.log("Condition failed: texte");
       return "Failed";
     }
   }
+  console.log("All conditions passed");
   return "Passed";
 };
 
 const evaluateSurfaceMax = (condition, textContent) => {
   const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
-  return regex.test(textContent);
+  const result = regex.test(textContent);
+  console.log(`Evaluating surface_max with regex ${regex}: ${result}`);
+  return result;
 };
 
 const evaluateMontant = (condition, textContent) => {
   const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
-  return regex.test(textContent);
+  const result = regex.test(textContent);
+  console.log(`Evaluating montant with regex ${regex}: ${result}`);
+  return result;
 };
 
 const evaluateDate = (condition, textContent) => {
   const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
-  return regex.test(textContent);
+  const result = regex.test(textContent);
+  console.log(`Evaluating date with regex ${regex}: ${result}`);
+  return result;
 };
 
 const evaluateTexte = (condition, textContent) => {
-  return textContent.includes(condition.value);
+  const result = textContent.includes(condition.value);
+  console.log(`Evaluating texte: "${condition.value}" in text: ${result}`);
+  return result;
 };
 
 const generateComments = (test) => {
@@ -297,6 +316,7 @@ const filterImportantTests = (tests) => {
   return tests.filter((test) => test.conditions && test.conditions.length > 0);
 };
 </script>
+
 
 <style>
 .p-mb-5 {
