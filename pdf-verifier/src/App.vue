@@ -237,7 +237,6 @@ const analyzePdf = async () => {
     loading.value = false;
   }
 };
-
 const onFileSelect = (event) => {
   if (event.files.length > 0) {
     pdfFile.value = event.files[event.files.length-1];
