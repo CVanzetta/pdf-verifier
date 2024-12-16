@@ -1,4 +1,5 @@
 <template>
+  <div class ="mx-4 md:mx-10 lg:mx-20 xl:mx-60">
   <div class="component">
     <div class="grid">
       <!-- Outil de vérification PDF -->
@@ -133,6 +134,7 @@
                       </ul>
                     </div>
                   </div>
+                  
 
                   <!-- Sinon affichage direct des tests -->
                   <div v-else>
@@ -185,6 +187,7 @@
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <script setup>
