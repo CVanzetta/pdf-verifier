@@ -58,11 +58,8 @@
 
               <template #empty>
                 <div class="flex flex-col items-center justify-center text-center py-10">
-                  <div
-                    class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32"
-                    style="margin: 0 auto;"
-                  >
-                    <i class="pi pi-cloud-upload text-6xl text-gray-500"></i>
+                  <div class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32">
+                    <i class="pi pi-cloud-upload text-gray-500" style="font-size:4rem;"></i>
                   </div>
                   <p class="mt-6 mb-0 text-lg font-semibold">Drag and drop files here to upload.</p>
                 </div>
@@ -182,7 +179,6 @@ const normalizeText = (text) => {
     .trim();
 };
 
-// Modification pour sélectionner le dernier fichier
 const onFileSelect = (event) => {
   if (event.files.length > 0) {
     pdfFile.value = event.files[event.files.length - 1];
