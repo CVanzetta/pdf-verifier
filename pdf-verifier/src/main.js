@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import Material from '@primevue/themes/material';
 import PrimeVue from 'primevue/config'
+import './main.css'
 
 const app = createApp(App);
 
