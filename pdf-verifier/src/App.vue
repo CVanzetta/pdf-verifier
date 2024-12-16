@@ -132,6 +132,7 @@
                   ></i>
                 </template>
               </Column>
+              <Column field="categorie" header="Catégorie"></Column>
               <Column field="article" header="Article"></Column>
               <Column field="comments" header="Comments"></Column>
             </DataTable>
@@ -156,24 +157,38 @@ import Column from 'primevue/column';
 import Card from 'primevue/card';
 import 'primeicons/primeicons.css';
 import * as pdfjsLib from 'pdfjs-dist';
-import testData from '@/assets/Tests.json';
+import testData from '@/assets/Tests.json'; // Assurez-vous que ce chemin est correct
 
-// Assurez-vous que ce chemin est correct et accessible
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'; // Vérifiez le chemin du worker
 
 const pdfFile = ref(null);
 const editiqueTests = reactive(testData);
-const selectedTests = ref([]); // Store selected test IDs
+const selectedTests = ref([]);
 const results = ref([]);
 const selectAll = ref(false);
 const loading = ref(false);
 
-const preprocessText = (text) => {
+const normalizeText = (text) => {
   return text
     .toLowerCase()
-    .normalize('NFD').replace(/\p{Diacritic}/gu, '') // élimine les accents
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // accents
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+// Modification demandée pour sélectionner le dernier fichier
+const onFileSelect = (event) => {
+  if (event.files.length > 0) {
+    pdfFile.value = event.files[event.files.length - 1];
+    event.files.splice(0, event.files.length, pdfFile.value);
+    console.log("File selected:", pdfFile.value.name);
+  }
+};
+
+const onRemoveFile = () => {
+  pdfFile.value = null;
+  console.log("File removed");
 };
 
 const analyzePdf = async () => {
@@ -202,7 +217,6 @@ const analyzePdf = async () => {
     console.log(`PDF loaded. Number of pages: ${pdf.numPages}`);
 
     let textContent = "";
-
     for (let i = 1; i <= pdf.numPages; i++) {
       console.log(`Analyzing page ${i}/${pdf.numPages}...`);
       const page = await pdf.getPage(i);
@@ -211,11 +225,11 @@ const analyzePdf = async () => {
       textContent += pageText + " ";
     }
 
-    textContent = preprocessText(textContent);
+    textContent = normalizeText(textContent);
     console.log("Extracted PDF Content:", textContent);
 
     if (!textContent || textContent.length === 0) {
-      console.warn("No text extracted from the PDF. Check if the PDF is selectable or if OCR is needed.");
+      console.warn("No text extracted from the PDF. Check if the PDF is selectable or needs OCR.");
     }
 
     const allTests = editiqueTests.categories.flatMap(cat => cat.tests);
@@ -237,18 +251,6 @@ const analyzePdf = async () => {
     loading.value = false;
   }
 };
-const onFileSelect = (event) => {
-  if (event.files.length > 0) {
-    pdfFile.value = event.files[event.files.length-1];
-    event.files.splice(0, event.files.length, pdfFile.value); 
-    console.log("File selected:", pdfFile.value.name);
-  }
-};
-
-const onRemoveFile = () => {
-  pdfFile.value = null;
-  console.log("File removed");
-};
 
 const evaluateEditique = (test, textContent) => {
   console.log("Evaluating test:", test);
@@ -256,7 +258,7 @@ const evaluateEditique = (test, textContent) => {
 
   if (!test.conditions || test.conditions.length === 0) {
     console.warn("No conditions found for test:", test.id);
-    return "Passed"; // Pas de conditions = pas d'échec
+    return "Passed";
   }
 
   for (const condition of test.conditions) {
@@ -275,11 +277,15 @@ const evaluateEditique = (test, textContent) => {
         passed = evaluateDate(condition, textContent);
         break;
       case "texte":
+      case "texte_present":
         passed = evaluateTexte(condition, textContent);
+        break;
+      case "texte_multi_colonnes":
+        passed = evaluateTexteMultiColonnes(condition, textContent);
         break;
       default:
         console.error("Unknown condition type:", type);
-        return "Failed"; // On échoue si type inconnu
+        return "Failed";
     }
 
     if (!passed) {
@@ -293,8 +299,8 @@ const evaluateEditique = (test, textContent) => {
 };
 
 const evaluateSurfaceMax = (condition, textContent) => {
-  const ref = (condition.reference || "").toLowerCase();
-  const val = (condition.value || "").toLowerCase();
+  const ref = normalizeText(condition.reference || "");
+  const val = normalizeText(condition.value || "");
   const regex = new RegExp(`${ref}.*?(${val})`, "i");
   const result = regex.test(textContent);
   console.log(`Evaluating surface_max with regex ${regex}: ${result}`);
@@ -302,16 +308,16 @@ const evaluateSurfaceMax = (condition, textContent) => {
 };
 
 const evaluateMontant = (condition, textContent) => {
-  const ref = (condition.reference || "").toLowerCase();
-  // Pattern pour un montant, ajustez selon vos besoins
-  const regex = new RegExp(`${ref}.*?(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?)\\s*ffb`, "i");
+  const ref = normalizeText(condition.reference || "");
+  // Ajuster la regex selon vos besoins
+  const regex = new RegExp(`${ref}.*?(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?)`, "i");
   const result = regex.test(textContent);
   console.log(`Evaluating montant with regex ${regex}: ${result}`);
   return result;
 };
 
 const evaluateDate = (condition, textContent) => {
-  const ref = (condition.reference || "").toLowerCase();
+  const ref = normalizeText(condition.reference || "");
   const regex = new RegExp(`${ref}.*?(\\d{2}/\\d{2}/\\d{4})`, "i");
   const result = regex.test(textContent);
   console.log(`Evaluating date with regex ${regex}: ${result}`);
@@ -319,10 +325,23 @@ const evaluateDate = (condition, textContent) => {
 };
 
 const evaluateTexte = (condition, textContent) => {
-  const val = (condition.value || "").toLowerCase();
-  const result = textContent.includes(val);
-  console.log(`Evaluating texte: "${val}" in extracted text: ${result}`);
-  return result;
+  const val = normalizeText(condition.value || "");
+  const found = textContent.includes(val);
+  console.log(`Evaluating texte: "${val}" in extracted text: ${found}`);
+  return found;
+};
+
+const evaluateTexteMultiColonnes = (condition, textContent) => {
+  const normalizedText = normalizeText(textContent);
+  const values = (condition.values || []).map(v => normalizeText(v));
+
+  const allFound = values.every(val => {
+    const found = normalizedText.includes(val);
+    console.log(`Checking multi-colonnes value "${val}": ${found}`);
+    return found;
+  });
+
+  return allFound;
 };
 
 const generateComments = (test) => {
