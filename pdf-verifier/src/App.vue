@@ -11,7 +11,7 @@
               accept="application/pdf" 
               :maxFileSize="10 * 1024 * 1024" 
               custom-upload
-              multiple="false" 
+              :multiple="false" 
               @select="onFileSelect" 
               @remove="onRemoveFile">
               <template #header="{ chooseCallback, clearCallback, files }">
@@ -221,10 +221,14 @@ const analyzePdf = async () => {
 
 const onFileSelect = (event) => {
   if (event.files.length > 0) {
+    // Remplace toujours l'ancien fichier par le nouveau
     pdfFile.value = event.files[0];
+    event.files.splice(0, event.files.length, pdfFile.value); // Mettez à jour la liste des fichiers dans FileUpload
     console.log("File selected:", pdfFile.value.name);
   }
 };
+
+
 
 const onRemoveFile = () => {
   pdfFile.value = null;
