@@ -1,37 +1,37 @@
 <template>
-  <div 
-    class="component">
+  <div class="component">
     <div class="grid">
       <!-- PDF Verification Tool -->
       <div class="col-12">
         <Card header="PDF Verification Tool" class="mb-5">
           <template #content>
-            <FileUpload 
-              name="pdf[]" 
-              accept="application/pdf" 
-              :maxFileSize="10 * 1024 * 1024" 
+            <FileUpload
+              name="pdf[]"
+              accept="application/pdf"
+              :maxFileSize="10 * 1024 * 1024"
               custom-upload
-              :multiple="false" 
-              @select="onFileSelect" 
-              @remove="onRemoveFile">
+              :multiple="false"
+              @select="onFileSelect"
+              @remove="onRemoveFile"
+            >
               <template #header="{ chooseCallback, clearCallback, files }">
                 <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
                   <div class="flex gap-2">
-                    <Button 
-                      @click="chooseCallback" 
-                      icon="pi pi-folder-open" 
-                      rounded 
-                      outlined 
-                      severity="secondary">
-                    </Button>
-                    <Button 
-                      @click="clearCallback" 
-                      icon="pi pi-trash" 
-                      rounded 
-                      outlined 
-                      severity="danger" 
-                      :disabled="!files || files.length === 0">
-                    </Button>
+                    <Button
+                      @click="chooseCallback"
+                      icon="pi pi-folder-open"
+                      rounded
+                      outlined
+                      severity="secondary"
+                    ></Button>
+                    <Button
+                      @click="clearCallback"
+                      icon="pi pi-trash"
+                      rounded
+                      outlined
+                      severity="danger"
+                      :disabled="!files || files.length === 0"
+                    ></Button>
                   </div>
                   <span v-if="pdfFile">Selected File: {{ pdfFile.name }}</span>
                 </div>
@@ -39,13 +39,17 @@
               <template #content="{ files }">
                 <div v-if="files.length > 0" class="mt-4">
                   <ul>
-                    <li v-for="file in files" :key="file.name" class="flex justify-between items-center">
+                    <li
+                      v-for="file in files"
+                      :key="file.name"
+                      class="flex justify-between items-center"
+                    >
                       <span>{{ file.name }}</span>
-                      <Button 
-                        icon="pi pi-times" 
-                        class="p-button-text p-button-danger" 
-                        @click="$emit('remove', file)">
-                      </Button>
+                      <Button
+                        icon="pi pi-times"
+                        class="p-button-text p-button-danger"
+                        @click="$emit('remove', file)"
+                      ></Button>
                     </li>
                   </ul>
                 </div>
@@ -53,21 +57,21 @@
               <template #empty>
                 <div class="flex flex-col items-center">
                   <i
-                    class="pi pi-cloud-upload !border-2 !rounded-full !p-8 !text-4xl !text-muted-color">
-                  </i>
+                    class="pi pi-cloud-upload !border-2 !rounded-full !p-8 !text-4xl !text-muted-color"
+                  ></i>
                   <p class="mt-6 mb-0">Drag and drop files to here to upload.</p>
                 </div>
               </template>
             </FileUpload>
 
-            <Button 
-              label="Run Selected Tests" 
-              icon="pi pi-play" 
+            <Button
+              label="Run Selected Tests"
+              icon="pi pi-play"
               class="mt-3"
-              :loading="loading" 
-              :disabled="loading || !pdfFile" 
-              @click="analyzePdf">
-            </Button>
+              :loading="loading"
+              :disabled="loading || !pdfFile"
+              @click="analyzePdf"
+            ></Button>
           </template>
         </Card>
       </div>
@@ -76,27 +80,28 @@
       <div class="col-12">
         <Card header="Select Tests to Run" class="mb-5">
           <template #content>
-            <Checkbox 
-              :binary="true" 
-              v-model="selectAll" 
-              label="Select All Tests" 
-              @change="toggleSelectAll">
-            </Checkbox>
+            <Checkbox
+              :binary="true"
+              v-model="selectAll"
+              label="Select All Tests"
+              @change="toggleSelectAll"
+            ></Checkbox>
 
             <Accordion :value="['0']" multiple>
-              <AccordionPanel 
-                v-for="(category, index) in editiqueTests.categories" 
+              <AccordionPanel
+                v-for="(category, index) in editiqueTests.categories"
                 :key="index"
-                :value="index.toString()">
+                :value="index.toString()"
+              >
                 <AccordionHeader>{{ category.nom }}</AccordionHeader>
                 <AccordionContent>
                   <ul class="list mt-2">
                     <li v-for="test in filterImportantTests(category.tests)" :key="test.id">
-                      <Checkbox 
-                        v-model="selectedTests" 
-                        :value="test.id" 
-                        @change="toggleTestSelection">
-                      </Checkbox>
+                      <Checkbox
+                        v-model="selectedTests"
+                        :value="test.id"
+                        @change="toggleTestSelection"
+                      ></Checkbox>
                       <span>{{ test.categorie + ' - ' + test.article }}</span>
                       <i class="pi pi-info-circle" style="margin-left: 10px; color: blue;"></i>
                     </li>
@@ -115,18 +120,20 @@
             <DataTable :value="results">
               <Column field="status" header="Status">
                 <template #body="{ data }">
-                  <i 
-                    v-if="data.status === 'Passed'" 
-                    class="pi pi-check-circle" 
-                    style="color: green;">
-                  </i>
-                  <i 
-                    v-if="data.status === 'Failed'" 
-                    class="pi pi-times-circle" 
-                    style="color: red;">
-                  </i>
+                  <i
+                    v-if="data.status === 'Passed'"
+                    class="pi pi-check-circle"
+                    style="color: green;"
+                  ></i>
+                  <i
+                    v-if="data.status === 'Failed'"
+                    class="pi pi-times-circle"
+                    style="color: red;"
+                  ></i>
                 </template>
               </Column>
+              <Column field="article" header="Article"></Column>
+              <Column field="comments" header="Comments"></Column>
             </DataTable>
           </template>
         </Card>
@@ -151,10 +158,10 @@ import 'primeicons/primeicons.css';
 import * as pdfjsLib from 'pdfjs-dist';
 import testData from '@/assets/Tests.json';
 
+// Assurez-vous que ce chemin est correct et accessible
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const pdfFile = ref(null);
-const isDragging = ref(false);
 const editiqueTests = reactive(testData);
 const selectedTests = ref([]); // Store selected test IDs
 const results = ref([]);
@@ -164,20 +171,19 @@ const loading = ref(false);
 const preprocessText = (text) => {
   return text
     .toLowerCase()
-    .normalize("NFD").replace(/[̀-ͯ]/g, "") // Remove accents
-    .replace(/\s+/g, " ") // Normalize spaces
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '') // élimine les accents
+    .replace(/\s+/g, ' ')
     .trim();
 };
 
 const analyzePdf = async () => {
-  console.log("PDF analysis started...");
-
+  console.log("Starting PDF analysis...");
   if (!pdfFile.value) {
     console.error("Please upload a PDF file before running the analysis.");
     return;
   }
 
-  if (pdfFile.value.size > 10 * 1024 * 1024) { // Limit file size to 10MB
+  if (pdfFile.value.size > 10 * 1024 * 1024) {
     console.error("The uploaded file is too large. Please upload a file smaller than 10MB.");
     return;
   }
@@ -193,31 +199,39 @@ const analyzePdf = async () => {
   try {
     const arrayBuffer = await pdfFile.value.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    console.log(`PDF loaded. Number of pages: ${pdf.numPages}`);
+
     let textContent = "";
 
     for (let i = 1; i <= pdf.numPages; i++) {
-      console.log(`Analyzing page ${i} of ${pdf.numPages}...`);
+      console.log(`Analyzing page ${i}/${pdf.numPages}...`);
       const page = await pdf.getPage(i);
       const text = await page.getTextContent();
-      textContent += text.items.map(item => item.str).join(" ") + " ";
+      const pageText = text.items.map(item => item.str).join(" ");
+      textContent += pageText + " ";
     }
 
     textContent = preprocessText(textContent);
     console.log("Extracted PDF Content:", textContent);
 
+    if (!textContent || textContent.length === 0) {
+      console.warn("No text extracted from the PDF. Check if the PDF is selectable or if OCR is needed.");
+    }
+
+    const allTests = editiqueTests.categories.flatMap(cat => cat.tests);
     results.value = selectedTests.value.map((testId) => {
-      const test = editiqueTests.categories.flatMap(cat => cat.tests).find(t => t.id === testId);
+      const test = allTests.find(t => t.id === testId);
       if (!test) {
         console.error(`Test with ID ${testId} not found.`);
         return null;
       }
       const status = evaluateEditique(test, textContent);
       return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
-    }).filter(result => result !== null); // Remove null results
+    }).filter(r => r !== null);
 
-    console.log("Results after analysis:", results.value);
+    console.log("Final results array:", results.value);
   } catch (error) {
-    console.error("An error occurred while analyzing the PDF. Please make sure the file is not corrupted.");
+    console.error("An error occurred while analyzing the PDF.");
     console.error(error);
   } finally {
     loading.value = false;
@@ -226,8 +240,8 @@ const analyzePdf = async () => {
 
 const onFileSelect = (event) => {
   if (event.files.length > 0) {
-    pdfFile.value = event.files[0];
-    event.files.splice(0, event.files.length, pdfFile.value); // Update FileUpload internal list
+    pdfFile.value = event.files[event.files.length-1];
+    event.files.splice(0, event.files.length, pdfFile.value); 
     console.log("File selected:", pdfFile.value.name);
   }
 };
@@ -239,56 +253,76 @@ const onRemoveFile = () => {
 
 const evaluateEditique = (test, textContent) => {
   console.log("Evaluating test:", test);
-  console.log("Text content:", textContent);
+  console.log("Text content for test:", textContent);
 
-  const conditions = test.conditions;
-  for (const condition of conditions) {
+  if (!test.conditions || test.conditions.length === 0) {
+    console.warn("No conditions found for test:", test.id);
+    return "Passed"; // Pas de conditions = pas d'échec
+  }
+
+  for (const condition of test.conditions) {
+    const type = condition.type || "";
     console.log("Checking condition:", condition);
-    if (condition.type === "surface_max" && !evaluateSurfaceMax(condition, textContent)) {
-      console.log("Condition failed: surface_max");
-      return "Failed";
+
+    let passed = false;
+    switch (type) {
+      case "surface_max":
+        passed = evaluateSurfaceMax(condition, textContent);
+        break;
+      case "montant":
+        passed = evaluateMontant(condition, textContent);
+        break;
+      case "date":
+        passed = evaluateDate(condition, textContent);
+        break;
+      case "texte":
+        passed = evaluateTexte(condition, textContent);
+        break;
+      default:
+        console.error("Unknown condition type:", type);
+        return "Failed"; // On échoue si type inconnu
     }
-    if (condition.type === "montant" && !evaluateMontant(condition, textContent)) {
-      console.log("Condition failed: montant");
-      return "Failed";
-    }
-    if (condition.type === "date" && !evaluateDate(condition, textContent)) {
-      console.log("Condition failed: date");
-      return "Failed";
-    }
-    if (condition.type === "texte" && !evaluateTexte(condition, textContent)) {
-      console.log("Condition failed: texte");
+
+    if (!passed) {
+      console.log(`Condition failed: ${type}`, condition);
       return "Failed";
     }
   }
-  console.log("All conditions passed");
+
+  console.log("All conditions passed for test:", test.id);
   return "Passed";
 };
 
 const evaluateSurfaceMax = (condition, textContent) => {
-  const regex = new RegExp(`${condition.reference}.*?(${condition.value})`, "i");
+  const ref = (condition.reference || "").toLowerCase();
+  const val = (condition.value || "").toLowerCase();
+  const regex = new RegExp(`${ref}.*?(${val})`, "i");
   const result = regex.test(textContent);
   console.log(`Evaluating surface_max with regex ${regex}: ${result}`);
   return result;
 };
 
 const evaluateMontant = (condition, textContent) => {
-  const regex = new RegExp(`${condition.reference}.*?((\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?))\s*FFB`, "i");
+  const ref = (condition.reference || "").toLowerCase();
+  // Pattern pour un montant, ajustez selon vos besoins
+  const regex = new RegExp(`${ref}.*?(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?)\\s*ffb`, "i");
   const result = regex.test(textContent);
   console.log(`Evaluating montant with regex ${regex}: ${result}`);
   return result;
 };
 
 const evaluateDate = (condition, textContent) => {
-  const regex = new RegExp(`${condition.reference}.*?(\d{2}/\d{2}/\d{4})`, "i");
+  const ref = (condition.reference || "").toLowerCase();
+  const regex = new RegExp(`${ref}.*?(\\d{2}/\\d{2}/\\d{4})`, "i");
   const result = regex.test(textContent);
   console.log(`Evaluating date with regex ${regex}: ${result}`);
   return result;
 };
 
 const evaluateTexte = (condition, textContent) => {
-  const result = textContent.includes(condition.value);
-  console.log(`Evaluating texte: "${condition.value}" in text: ${result}`);
+  const val = (condition.value || "").toLowerCase();
+  const result = textContent.includes(val);
+  console.log(`Evaluating texte: "${val}" in extracted text: ${result}`);
   return result;
 };
 
@@ -302,6 +336,7 @@ const toggleSelectAll = () => {
   } else {
     selectedTests.value = [];
   }
+  console.log("Selected Tests after toggle:", selectedTests.value);
 };
 
 const toggleTestSelection = (testId) => {
@@ -310,13 +345,13 @@ const toggleTestSelection = (testId) => {
   } else {
     selectedTests.value.push(testId);
   }
+  console.log("Selected Tests after selection:", selectedTests.value);
 };
 
 const filterImportantTests = (tests) => {
   return tests.filter((test) => test.conditions && test.conditions.length > 0);
 };
 </script>
-
 
 <style>
 .p-mb-5 {
