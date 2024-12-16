@@ -11,6 +11,7 @@
               accept="application/pdf" 
               :maxFileSize="10 * 1024 * 1024" 
               custom-upload
+              multiple="false" 
               @select="onFileSelect" 
               @remove="onRemoveFile">
               <template #header="{ chooseCallback, clearCallback, files }">
