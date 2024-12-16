@@ -36,6 +36,7 @@
                   <span v-if="pdfFile">Selected File: {{ pdfFile.name }}</span>
                 </div>
               </template>
+
               <template #content="{ files }">
                 <div v-if="files.length > 0" class="mt-4">
                   <ul>
@@ -54,12 +55,16 @@
                   </ul>
                 </div>
               </template>
+
               <template #empty>
-                <div class="flex flex-col items-center">
-                  <i
-                    class="pi pi-cloud-upload !border-2 !rounded-full !p-8 !text-4xl !text-muted-color"
-                  ></i>
-                  <p class="mt-6 mb-0">Drag and drop files to here to upload.</p>
+                <div class="flex flex-col items-center justify-center text-center py-10">
+                  <div
+                    class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32"
+                    style="margin: 0 auto;"
+                  >
+                    <i class="pi pi-cloud-upload text-6xl text-gray-500"></i>
+                  </div>
+                  <p class="mt-6 mb-0 text-lg font-semibold">Drag and drop files here to upload.</p>
                 </div>
               </template>
             </FileUpload>
@@ -157,9 +162,9 @@ import Column from 'primevue/column';
 import Card from 'primevue/card';
 import 'primeicons/primeicons.css';
 import * as pdfjsLib from 'pdfjs-dist';
-import testData from '@/assets/Tests.json'; // Assurez-vous que ce chemin est correct
+import testData from '@/assets/Tests.json';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'; // Vérifiez le chemin du worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const pdfFile = ref(null);
 const editiqueTests = reactive(testData);
@@ -177,7 +182,7 @@ const normalizeText = (text) => {
     .trim();
 };
 
-// Modification demandée pour sélectionner le dernier fichier
+// Modification pour sélectionner le dernier fichier
 const onFileSelect = (event) => {
   if (event.files.length > 0) {
     pdfFile.value = event.files[event.files.length - 1];
