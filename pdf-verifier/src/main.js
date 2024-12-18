@@ -1,47 +1,22 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import { createVuetify } from 'vuetify';
-import 'vuetify/styles';
-import '@mdi/font/css/materialdesignicons.css';
+import Material from '@primevue/themes/material';
+import PrimeVue from 'primevue/config'
+import './main.css'
 
-import {
-VApp,
-VContainer,
-VCard,
-VCardTitle,
-VCardText,
-VFileInput,
-VBtn,
-VList,
-VListItem,
-VExpansionPanels,
-VExpansionPanel,
-VExpansionPanelTitle,
-VExpansionPanelText,
-VCheckbox,
-VIcon,
-VDataTable,
-} from 'vuetify/components';
+const app = createApp(App);
 
-const vuetify = createVuetify({
-components: {
-    VApp,
-    VContainer,
-    VCard,
-    VCardTitle,
-    VCardText,
-    VFileInput,
-    VBtn,
-    VList,
-    VListItem,
-    VExpansionPanels,
-    VExpansionPanel,
-    VExpansionPanelTitle,
-    VExpansionPanelText,
-    VCheckbox,
-    VIcon,
-    VDataTable,
-},
+app.use(PrimeVue, { 
+    theme: {
+        preset: Material,
+        options: { 
+            prefix: 'p', 
+            darkModeSelector: 'false', 
+            cssLayer: false 
+        }
+    } 
+    
 });
 
-createApp(App).use(vuetify).mount('#app');
+
+app.mount('#app');
