@@ -202,6 +202,7 @@ import AccordionContent from 'primevue/accordioncontent';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Card from 'primevue/card';
+import axios from 'axios';
 import 'primeicons/primeicons.css';
 import * as pdfjsLib from 'pdfjs-dist';
 import testData from '@/assets/Tests.json';
@@ -215,6 +216,7 @@ const selectedCategories = ref([]);
 const selectAll = ref(false);
 const results = ref([]);
 const loading = ref(false);
+const apiResponse = ref(null); // Pour stocker la réponse du backend
 
 const normalizeText = (text) => {
   return text
@@ -236,6 +238,28 @@ const onFileSelect = (event) => {
 const onRemoveFile = () => {
   pdfFile.value = null;
   console.log("Fichier retiré");
+};
+
+// Méthode pour envoyer le fichier PDF au backend
+const uploadPdfToBackend = async () => {
+  if (!pdfFile.value) {
+    console.error("Aucun fichier sélectionné à envoyer au backend.");
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", pdfFile.value);
+
+    const response = await axios.post("http://127.0.0.1:5000/verify-logo", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    apiResponse.value = response.data;
+    console.log("Réponse de l'API :", apiResponse.value);
+  } catch (error) {
+    console.error("Erreur lors de l'envoi du fichier au backend :", error);
+  }
 };
 
 const analyzePdf = async () => {
