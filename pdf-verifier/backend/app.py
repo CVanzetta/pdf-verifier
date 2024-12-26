@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
-from pdf2image import convert_from_path
-import cv2
+from pdf2image import convert_from_path # type: ignore
+import cv2 # type: ignore
 import os
 
 app = Flask(__name__)
