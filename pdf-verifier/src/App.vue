@@ -1,128 +1,140 @@
 <template>
-  <div class ="mx-4 md:mx-10 lg:mx-20 xl:mx-60">
-  <div class="component">
-    <div class="grid">
-      <!-- Outil de vérification PDF -->
-      <div class="col-12">
-        <Card header="Outil de vérification PDF" class="mb-5">
-          <template #content>
-            <FileUpload
-              name="pdf[]"
-              accept="application/pdf"
-              :maxFileSize="10 * 1024 * 1024"
-              custom-upload
-              :multiple="false"
-              @select="onFileSelect"
-              @remove="onRemoveFile"
-            >
-              <template #header="{ chooseCallback, clearCallback, files }">
-                <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
-                  <div class="flex gap-2">
-                    <Button
-                      @click="chooseCallback"
-                      icon="pi pi-folder-open"
-                      rounded
-                      outlined
-                      severity="secondary"
-                    ></Button>
-                    <Button
-                      @click="clearCallback"
-                      icon="pi pi-trash"
-                      rounded
-                      outlined
-                      severity="danger"
-                      :disabled="!files || files.length === 0"
-                    ></Button>
-                  </div>
-                  <span v-if="pdfFile">Fichier sélectionné : {{ pdfFile.name }}</span>
-                </div>
-              </template>
-
-              <template #content="{ files }">
-                <div v-if="files.length > 0" class="mt-4">
-                  <ul>
-                    <li
-                      v-for="file in files"
-                      :key="file.name"
-                      class="flex justify-between items-center"
-                    >
-                      <span>{{ file.name }}</span>
-                      <Button
-                        icon="pi pi-times"
-                        class="p-button-text p-button-danger"
-                        @click="$emit('remove', file)"
-                      ></Button>
-                    </li>
-                  </ul>
-                </div>
-              </template>
-
-              <template #empty>
-                <div class="flex flex-col items-center justify-center text-center py-10">
-                  <div class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32">
-                    <i class="pi pi-cloud-upload text-gray-500" style="font-size:4rem;"></i>
-                  </div>
-                  <p class="mt-6 mb-0 text-lg font-semibold">Glissez-déposez le fichiers ici</p>
-                </div>
-              </template>
-            </FileUpload>
-
-            <Button
-              label="Lancer les tests sélectionnés"
-              icon="pi pi-play"
-              class="mt-3"
-              :loading="loading"
-              :disabled="loading || !pdfFile || selectedTests.length === 0"
-              @click="analyzePdf"
-            ></Button>
-          </template>
-        </Card>
-      </div>
-
-      <!-- Sélectionner les tests à exécuter -->
-      <div class="col-12">
-        <Card header="Sélectionner les tests à exécuter" class="mb-5">
-          <template #content>
-            <!-- Checkbox globale pour sélectionner tous les tests -->
-            <div class="flex items-center gap-2 mb-4">
-              <Checkbox
-                :binary="true"
-                v-model="selectAll"
-                @change="toggleSelectAll"
-              ></Checkbox>
-              <label @click="$emit('click')" class="cursor-pointer select-none">
-                Sélectionner tous les tests disponibles
-              </label>
-            </div>
-
-            <Accordion :value= multiple>
-              <AccordionPanel
-                v-for="(category, index) in editiqueTests.categories"
-                :key="index"
-                :value="index.toString()"
+  <div class="mx-4 md:mx-10 lg:mx-20 xl:mx-60">
+    <div class="component">
+      <div class="grid">
+        <!-- Outil de vérification PDF -->
+        <div class="col-12">
+          <Card header="Outil de vérification PDF" class="mb-5">
+            <template #content>
+              <FileUpload
+                name="pdf[]"
+                accept="application/pdf"
+                :maxFileSize="10 * 1024 * 1024"
+                custom-upload
+                :multiple="false"
+                @select="onFileSelect"
+                @remove="onRemoveFile"
               >
-                <AccordionHeader>
-                  <div class="flex items-center gap-2">
-                    <!-- Checkbox pour la catégorie -->
-                    <Checkbox
-                      v-model="selectedCategories"
-                      :value="category.nom"
-                      @change="toggleCategorySelection(category)"
-                    />
-                    <span>{{ category.nom }}</span>
+                <template #header="{ chooseCallback, clearCallback, files }">
+                  <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
+                    <div class="flex gap-2">
+                      <Button
+                        @click="chooseCallback"
+                        icon="pi pi-folder-open"
+                        rounded
+                        outlined
+                        severity="secondary"
+                      ></Button>
+                      <Button
+                        @click="clearCallback"
+                        icon="pi pi-trash"
+                        rounded
+                        outlined
+                        severity="danger"
+                        :disabled="!files || files.length === 0"
+                      ></Button>
+                    </div>
+                    <span v-if="pdfFile">Fichier sélectionné : {{ pdfFile.name }}</span>
                   </div>
-                </AccordionHeader>
-                <AccordionContent>
-                  <!-- Si la catégorie possède des sous-catégories -->
-                  <div v-if="category.sousCategories && category.sousCategories.length > 0">
-                    <div
-                      v-for="sc in category.sousCategories"
-                      :key="sc.nom"
-                      class="mt-2 border-t pt-2"
-                    >
-                      <div class="font-semibold">{{ sc.nom }}</div>
-                      <ul class="list mt-2 ml-4">
-                        <li v-for="test in filterImportantTests(sc.tests)" :key="test.id" class="flex items-center gap-2">
+                </template>
+
+                <template #content="{ files }">
+                  <div v-if="files.length > 0" class="mt-4">
+                    <ul>
+                      <li v-for="file in files" :key="file.name" class="flex justify-between items-center">
+                        <span>{{ file.name }}</span>
+                        <Button
+                          icon="pi pi-times"
+                          class="p-button-text p-button-danger"
+                          @click="$emit('remove', file)"
+                        ></Button>
+                      </li>
+                    </ul>
+                  </div>
+                </template>
+
+                <template #empty>
+                  <div class="flex flex-col items-center justify-center text-center py-10">
+                    <div class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32">
+                      <i class="pi pi-cloud-upload text-gray-500" style="font-size:4rem;"></i>
+                    </div>
+                    <p class="mt-6 mb-0 text-lg font-semibold">Glissez-déposez le fichiers ici</p>
+                  </div>
+                </template>
+              </FileUpload>
+
+              <Button
+                label="Lancer les tests sélectionnés"
+                icon="pi pi-play"
+                class="mt-3"
+                :loading="loading"
+                :disabled="loading || !pdfFile || selectedTests.length === 0"
+                @click="analyzePdf"
+              ></Button>
+            </template>
+          </Card>
+        </div>
+
+        <!-- Sélectionner les tests à exécuter -->
+        <div class="col-12">
+          <Card header="Sélectionner les tests à exécuter" class="mb-5">
+            <template #content>
+              <!-- Checkbox globale pour sélectionner tous les tests -->
+              <div class="flex items-center gap-2 mb-4">
+                <Checkbox :binary="true" v-model="selectAll" @change="toggleSelectAll"></Checkbox>
+                <label @click="$emit('click')" class="cursor-pointer select-none">
+                  Sélectionner tous les tests disponibles
+                </label>
+              </div>
+
+              <Accordion :value= multiple>
+                <AccordionPanel
+                  v-for="(category, index) in editiqueTests.categories"
+                  :key="index"
+                  :value="index.toString()"
+                >
+                  <AccordionHeader>
+                    <div class="flex items-center gap-2">
+                      <!-- Checkbox pour la catégorie -->
+                      <Checkbox
+                        v-model="selectedCategories"
+                        :value="category.nom"
+                        @change="toggleCategorySelection(category)"
+                      />
+                      <span>{{ category.nom }}</span>
+                    </div>
+                  </AccordionHeader>
+                  <AccordionContent>
+                    <!-- Si la catégorie possède des sous-catégories -->
+                    <div v-if="category.sousCategories && category.sousCategories.length > 0">
+                      <div v-for="sc in category.sousCategories" :key="sc.nom" class="mt-2 border-t pt-2">
+                        <div class="font-semibold">{{ sc.nom }}</div>
+                        <ul class="list mt-2 ml-4">
+                          <li
+                            v-for="test in filterImportantTests(sc.tests)"
+                            :key="test.id"
+                            class="flex items-center gap-2"
+                          >
+                            <Checkbox
+                              v-model="selectedTests"
+                              :value="test.id"
+                              @change="toggleTestSelection"
+                            />
+                            <span>{{ test.categorie + ' - ' + test.article }}</span>
+                            <i class="pi pi-info-circle ml-2 text-blue-500"></i>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <!-- Sinon affichage direct des tests -->
+                    <div v-else>
+                      <ul class="list mt-2">
+                        <li
+                          v-for="test in filterImportantTests(category.tests)"
+                          :key="test.id"
+                          class="flex items-center gap-2"
+                        >
                           <Checkbox
                             v-model="selectedTests"
                             :value="test.id"
@@ -133,61 +145,44 @@
                         </li>
                       </ul>
                     </div>
-                  </div>
-                  
+                  </AccordionContent>
+                </AccordionPanel>
+              </Accordion>
+            </template>
+          </Card>
+        </div>
 
-                  <!-- Sinon affichage direct des tests -->
-                  <div v-else>
-                    <ul class="list mt-2">
-                      <li v-for="test in filterImportantTests(category.tests)" :key="test.id" class="flex items-center gap-2">
-                        <Checkbox
-                          v-model="selectedTests"
-                          :value="test.id"
-                          @change="toggleTestSelection"
-                        />
-                        <span>{{ test.categorie + ' - ' + test.article }}</span>
-                        <i class="pi pi-info-circle ml-2 text-blue-500"></i>
-                      </li>
-                    </ul>
-                  </div>
-                </AccordionContent>
-              </AccordionPanel>
-            </Accordion>
-          </template>
-        </Card>
-      </div>
-
-      <!-- Résultats des tests -->
-      <div class="col-12" v-if="results.length > 0">
-        <Card header="Résultats des tests" class="mb-5">
-          <template #content>
-            <DataTable :value="results">
-              <Column field="status" header="Statut">
-                <template #body="{ data }">
-                  <i
-                    v-if="data.status === 'Passed'"
-                    class="pi pi-check-circle"
-                    style="color: green;"
-                    title="Réussi"
-                  ></i>
-                  <i
-                    v-if="data.status === 'Failed'"
-                    class="pi pi-times-circle"
-                    style="color: red;"
-                    title="Échoué"
-                  ></i>
-                </template>
-              </Column>
-              <Column field="categorie" header="Catégorie"></Column>
-              <Column field="article" header="Article"></Column>
-              <Column field="comments" header="Commentaires"></Column>
-            </DataTable>
-          </template>
-        </Card>
+        <!-- Résultats des tests -->
+        <div class="col-12" v-if="results.length > 0">
+          <Card header="Résultats des tests" class="mb-5">
+            <template #content>
+              <DataTable :value="results">
+                <Column field="status" header="Statut">
+                  <template #body="{ data }">
+                    <i
+                      v-if="data.status === 'Passed'"
+                      class="pi pi-check-circle"
+                      style="color: green;"
+                      title="Réussi"
+                    ></i>
+                    <i
+                      v-if="data.status === 'Failed'"
+                      class="pi pi-times-circle"
+                      style="color: red;"
+                      title="Échoué"
+                    ></i>
+                  </template>
+                </Column>
+                <Column field="categorie" header="Catégorie"></Column>
+                <Column field="article" header="Article"></Column>
+                <Column field="comments" header="Commentaires"></Column>
+              </DataTable>
+            </template>
+          </Card>
+        </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <script setup>
@@ -203,14 +198,8 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Card from 'primevue/card';
 import axios from 'axios';
-import 'primeicons/primeicons.css';
-import * as pdfjsLib from 'pdfjs-dist';
-import testData from '@/assets/Tests.json';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const pdfFile = ref(null);
-const editiqueTests = reactive(testData);
 const selectedTests = ref([]);
 const selectedCategories = ref([]);
 const selectAll = ref(false);
@@ -241,26 +230,6 @@ const onRemoveFile = () => {
 };
 
 // Méthode pour envoyer le fichier PDF au backend
-const uploadPdfToBackend = async () => {
-  if (!pdfFile.value) {
-    console.error("Aucun fichier sélectionné à envoyer au backend.");
-    return;
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append("file", pdfFile.value);
-
-    const response = await axios.post("http://127.0.0.1:5000/verify-logo", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    apiResponse.value = response.data;
-    console.log("Réponse de l'API :", apiResponse.value);
-  } catch (error) {
-    console.error("Erreur lors de l'envoi du fichier au backend :", error);
-  }
-};
 
 const analyzePdf = async () => {
   console.log("Analyse du PDF en cours...");
@@ -302,30 +271,6 @@ const analyzePdf = async () => {
     if (!textContent || textContent.length === 0) {
       console.warn("Aucun texte n'a été extrait du PDF. Vérifiez que le PDF est sélectionnable ou utilisez un OCR.");
     }
-
-    // Récupérer tous les tests (y compris ceux dans les sous-catégories)
-    const allTests = [];
-    for (const category of editiqueTests.categories) {
-      if (category.sousCategories && category.sousCategories.length > 0) {
-        for (const sc of category.sousCategories) {
-          allTests.push(...sc.tests);
-        }
-      } else {
-        allTests.push(...category.tests);
-      }
-    }
-
-    results.value = selectedTests.value.map((testId) => {
-      const test = allTests.find(t => t.id === testId);
-      if (!test) {
-        console.error(`Test avec l'ID ${testId} introuvable.`);
-        return null;
-      }
-      const status = evaluateEditique(test, textContent);
-      return { ...test, status, comments: status === "Failed" ? generateComments(test) : "" };
-    }).filter(r => r !== null);
-
-    console.log("Résultats finaux :", results.value);
   } catch (error) {
     console.error("Une erreur s'est produite lors de l'analyse du PDF.");
     console.error(error);
@@ -334,51 +279,6 @@ const analyzePdf = async () => {
   }
 };
 
-const evaluateEditique = (test, textContent) => {
-  console.log("Évaluation du test :", test);
-  console.log("Contenu texte pour le test :", textContent);
-
-  if (!test.conditions || test.conditions.length === 0) {
-    console.warn("Aucune condition trouvée pour le test :", test.id);
-    return "Passed";
-  }
-
-  for (const condition of test.conditions) {
-    const type = condition.type || "";
-    console.log("Vérification de la condition :", condition);
-
-    let passed = false;
-    switch (type) {
-      case "surface_max":
-        passed = evaluateSurfaceMax(condition, textContent);
-        break;
-      case "montant":
-        passed = evaluateMontant(condition, textContent);
-        break;
-      case "date":
-        passed = evaluateDate(condition, textContent);
-        break;
-      case "texte":
-      case "texte_present":
-        passed = evaluateTexte(condition, textContent);
-        break;
-      case "texte_multi_colonnes":
-        passed = evaluateTexteMultiColonnes(condition, textContent);
-        break;
-      default:
-        console.error("Type de condition inconnu :", type);
-        return "Failed";
-    }
-
-    if (!passed) {
-      console.log(`Condition échouée : ${type}`, condition);
-      return "Failed";
-    }
-  }
-
-  console.log("Toutes les conditions sont satisfaites pour le test :", test.id);
-  return "Passed";
-};
 
 const evaluateSurfaceMax = (condition, textContent) => {
   const ref = normalizeText(condition.reference || "");
@@ -396,38 +296,6 @@ const evaluateMontant = (condition, textContent) => {
   const result = regex.test(textContent);
   console.log(`Évaluation montant avec regex ${regex} : ${result}`);
   return result;
-};
-
-const evaluateDate = (condition, textContent) => {
-  const ref = normalizeText(condition.reference || "");
-  const regex = new RegExp(`${ref}.*?(\\d{2}/\\d{2}/\\d{4})`, "i");
-  const result = regex.test(textContent);
-  console.log(`Évaluation date avec regex ${regex} : ${result}`);
-  return result;
-};
-
-const evaluateTexte = (condition, textContent) => {
-  const val = normalizeText(condition.value || "");
-  const found = textContent.includes(val);
-  console.log(`Évaluation texte : "${val}" dans le texte extrait : ${found}`);
-  return found;
-};
-
-const evaluateTexteMultiColonnes = (condition, textContent) => {
-  const normalizedText = normalizeText(textContent);
-  const values = (condition.values || []).map(v => normalizeText(v));
-
-  const allFound = values.every(val => {
-    const found = normalizedText.includes(val);
-    console.log(`Vérification multi-colonnes pour "${val}" : ${found}`);
-    return found;
-  });
-
-  return allFound;
-};
-
-const generateComments = (test) => {
-  return `La condition ${test.article} n'a pas été remplie. Veuillez vérifier les exigences.`;
 };
 
 const toggleSelectAll = () => {
@@ -518,6 +386,13 @@ const filterImportantTests = (tests) => {
   return tests.filter((test) => test.conditions && test.conditions.length > 0);
 };
 </script>
+
+<style scoped>
+/* Add your custom styles here */
+.p-m-3 {
+  text-align: center;
+}
+</style>
 
 <style>
 .p-mb-5 {
