@@ -10,8 +10,7 @@ Clonez le projet 🛠️ :
 
 bash
 Copier le code
-git clone <URL_DU_DEPOT>
-cd <NOM_DU_REPERTOIRE>
+git clone [<URL_DU_DEPOT>](https://github.com/CVanzetta/pdf-verifier.git)
 Installez les dépendances 📦 :
 
 bash
