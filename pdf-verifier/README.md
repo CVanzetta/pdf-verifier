@@ -1,36 +1,49 @@
-📝 PDF Test Validator
-✨ Description
-Cette application permet de vérifier des fichiers PDF en fonction de tests prédéfinis. Elle est développée avec PrimeVue et propose une interface simple pour :
+# PDF Test Validator
 
-📂 Téléverser un PDF
-✅ Exécuter des tests
-📊 Afficher les résultats
-🚀 Installation
-Clonez le projet 🛠️ :
+## Description
+PDF Test Validator est une application permettant de vérifier des fichiers PDF en fonction de tests prédéfinis. Elle est développée avec PrimeVue et propose une interface intuitive pour :
 
-bash
-Copier le code
-git clone [<URL_DU_DEPOT>](https://github.com/CVanzetta/pdf-verifier.git)
-Installez les dépendances 📦 :
+- 📂 **Téléverser un PDF**
+- ✅ **Exécuter des tests personnalisés**
+- 📊 **Afficher les résultats détaillés**
 
-bash
-Copier le code
+---
+
+## 🚀 Installation
+
+### 1. Cloner le projet
+```bash
+# Clonez le dépôt Git
+git clone https://github.com/CVanzetta/pdf-verifier.git
+```
+
+### 2. Installer les dépendances
+```bash
+# Installez les dépendances du projet
 npm install
-Lancez le serveur 🖥️ :
+```
 
-bash
-Copier le code
+### 3. Lancer le serveur
+```bash
+# Lancez le serveur de développement
 npm run serve
-Accédez à l'application 🌐 :
-Ouvrez http://localhost:8080 dans votre navigateur.
+```
 
-➕ Ajouter un test
-Les tests sont définis dans le fichier JSON situé à :
-src/assets/Tests.json.
+### 4. Accéder à l'application
+Ouvrez votre navigateur à l'adresse suivante :
+```
+http://localhost:8080
+```
 
-Exemple d’ajout :
-json
-Copier le code
+---
+
+## ➕ Ajouter un test
+
+Les tests sont définis dans le fichier JSON situé à : `src/assets/Tests.json`.
+
+### Exemple d’ajout
+Voici un exemple de structure pour ajouter un nouveau test :
+```json
 {
   "categories": [
     {
@@ -50,48 +63,60 @@ Copier le code
     }
   ]
 }
-📋 Étapes :
-Ouvrez le fichier Tests.json.
-Ajoutez une nouvelle catégorie ou un test dans une catégorie existante.
-Renseignez les conditions du test :
-type : Type de vérification (texte, montant, date, etc.).
-value : Valeur à chercher dans le PDF.
-Sauvegardez vos modifications.
-🛠️ Résolution de l’erreur API version does not match the Worker version
-⚠️ Problème :
-Si vous voyez cette erreur :
+```
 
-lua
-Copier le code
+### 🔖 Étapes pour ajouter un test :
+1. **Ouvrez le fichier `Tests.json`.**
+2. **Ajoutez une nouvelle catégorie** ou un nouveau test dans une catégorie existante.
+3. **Définissez les conditions du test** :
+   - **type** : Type de vérification (texte, montant, date, etc.).
+   - **value** : Valeur à chercher dans le PDF.
+4. **Sauvegardez vos modifications.**
+
+---
+
+## 🔧 Résolution de l’erreur : "API version does not match the Worker version"
+
+### ⚠ Problème
+Si vous rencontrez l’erreur suivante :
+```
 UnknownErrorException: The API version "X" does not match the Worker version "Y".
-📝 Solution :
-Vérifiez la version installée 📦 :
+```
 
-bash
-Copier le code
-npm ls pdfjs-dist
-Localisez le fichier worker 🗂️ :
-Chemin : node_modules/pdfjs-dist/build/pdf.worker.min.js.
+### 🔧 Solution
+1. **Vérifiez la version installée** :
+   ```bash
+   npm ls pdfjs-dist
+   ```
 
-Copiez ce fichier dans votre projet (par ex. dans public/).
+2. **Localisez le fichier worker** :
+   - Chemin : `node_modules/pdfjs-dist/build/pdf.worker.min.js`
 
-Modifiez le chemin dans le code 🖊️ :
+3. **Copiez ce fichier dans votre projet** :
+   - Placez-le dans le dossier `public/`.
 
-javascript
-Copier le code
-import * as pdfjsLib from 'pdfjs-dist';
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-Redémarrez l'application 🔄 :
+4. **Modifiez le chemin dans le code** :
+   ```javascript
+   import * as pdfjsLib from 'pdfjs-dist';
+   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+   ```
 
-bash
-Copier le code
-npm run serve
-🛠️ Fonctionnalités
-📂 Téléverser un fichier PDF.
-✅ Sélectionner des tests personnalisés.
-🔍 Analyser le contenu textuel du PDF.
-📊 Afficher des résultats détaillés.
-🎯 Utilité
-✔️ Vérifiez la conformité des documents PDF.
-⚡ Automatisez des vérifications rapides et efficaces.
-📑 Simplifiez la gestion des documents.
+5. **Redémarrez l’application** :
+   ```bash
+   npm run serve
+   ```
+
+---
+
+## 🔨 Fonctionnalités
+- 📂 **Téléverser un fichier PDF.**
+- ✅ **Sélectionner des tests personnalisés.**
+- 🔍 **Analyser le contenu textuel du PDF.**
+- 📊 **Afficher des résultats détaillés.**
+
+---
+
+## 🔍 Utilité
+- ✔️ **Vérifiez la conformité des documents PDF.**
+- ⚡️ **Automatisez des vérifications rapides et efficaces.**
+- 📝 **Simplifiez la gestion des documents.**
