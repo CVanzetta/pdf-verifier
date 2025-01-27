@@ -120,4 +120,3 @@ UnknownErrorException: The API version "X" does not match the Worker version "Y"
 - ✔️ **Vérifiez la conformité des documents PDF.**
 - ⚡️ **Automatisez des vérifications rapides et efficaces.**
 - 📝 **Simplifiez la gestion des documents.**
-
