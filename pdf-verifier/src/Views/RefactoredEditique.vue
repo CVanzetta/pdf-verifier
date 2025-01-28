@@ -74,7 +74,6 @@ async function analyzePdf() {
 </script>
 
 <style>
-  /* Keep your styles consistent */
 .p-mb-5 {
     margin-bottom: 2rem;
 }
