@@ -1,20 +1,13 @@
 <template>
     <Card header="Sélectionner les tests à exécuter" class="mb-5">
       <template #content>
-  
-        <!-- Checkbox globale pour sélectionner tous les tests -->
         <div class="flex items-center gap-2 mb-4">
-          <Checkbox
-            :binary="true"
-            v-model="localSelectAll"
-            @change="toggleSelectAll"
-          />
-          <label @click="$emit('click')" class="cursor-pointer select-none">
+          <Checkbox v-model="localSelectAll" @change="toggleSelectAll" :binary="true" />
+          <label class="cursor-pointer select-none">
             Sélectionner tous les tests disponibles
           </label>
         </div>
   
-        <!-- Accordions for categories and sub-categories -->
         <Accordion :value="multiple">
           <AccordionPanel
             v-for="(category, index) in editiqueTests.categories"
@@ -32,7 +25,6 @@
               </div>
             </AccordionHeader>
             <AccordionContent>
-              <!-- Si la catégorie possède des sous-catégories -->
               <div v-if="category.sousCategories && category.sousCategories.length > 0">
                 <div
                   v-for="sc in category.sousCategories"
@@ -46,19 +38,13 @@
                       :key="test.id"
                       class="flex items-center gap-2"
                     >
-                      <Checkbox
-                        v-model="localSelectedTests"
-                        :value="test.id"
-                        @change="toggleTestSelection"
-                      />
+                      <Checkbox v-model="localSelectedTests" :value="test.id" @change="emitLocalData" />
                       <span>{{ test.categorie + ' - ' + test.article }}</span>
                       <i class="pi pi-info-circle ml-2 text-blue-500"></i>
                     </li>
                   </ul>
                 </div>
               </div>
-  
-              <!-- Sinon affichage direct des tests -->
               <div v-else>
                 <ul class="list mt-2">
                   <li
@@ -66,11 +52,7 @@
                     :key="test.id"
                     class="flex items-center gap-2"
                   >
-                    <Checkbox
-                      v-model="localSelectedTests"
-                      :value="test.id"
-                      @change="toggleTestSelection"
-                    />
+                    <Checkbox v-model="localSelectedTests" :value="test.id" @change="emitLocalData" />
                     <span>{{ test.categorie + ' - ' + test.article }}</span>
                     <i class="pi pi-info-circle ml-2 text-blue-500"></i>
                   </li>
@@ -84,7 +66,7 @@
   </template>
   
   <script setup>
-  import { ref, watch, computed } from 'vue';
+  import { ref, onMounted } from 'vue';
   import Card from 'primevue/card';
   import Checkbox from 'primevue/checkbox';
   import Accordion from 'primevue/accordion';
@@ -92,12 +74,12 @@
   import AccordionHeader from 'primevue/accordionheader';
   import AccordionContent from 'primevue/accordioncontent';
   
-  // Props
   const props = defineProps({
     editiqueTests: {
       type: Object,
       default: () => ({ categories: [] })
     },
+    // The parent is the single source of truth:
     selectedTests: {
       type: Array,
       default: () => []
@@ -112,134 +94,84 @@
     }
   });
   
-  // Emits
-  const emit = defineEmits([
-    'update:selectedTests',
-    'update:selectedCategories',
-    'update:selectAll'
-  ]);
+  const emit = defineEmits(['update:selectedTests','update:selectedCategories','update:selectAll']);
   
-  // Local refs to track internal states & watchers
-  const localSelectedTests = ref([...props.selectedTests]);
-  const localSelectedCategories = ref([...props.selectedCategories]);
-  const localSelectAll = ref(props.selectAll);
+  // Local copies for internal UI state
+  const localSelectedTests = ref([]);
+  const localSelectedCategories = ref([]);
+  const localSelectAll = ref(false);
   
-  // Watch for prop changes from parent
-  watch(
-    () => props.selectedTests,
-    (newVal) => {
-      localSelectedTests.value = [...newVal];
-    }
-  );
-  watch(
-    () => props.selectedCategories,
-    (newVal) => {
-      localSelectedCategories.value = [...newVal];
-    }
-  );
-  watch(
-    () => props.selectAll,
-    (newVal) => {
-      localSelectAll.value = newVal;
-    }
-  );
-  
-  // Watch for local changes to update parent
-  watch(localSelectedTests, (newVal) => {
-    emit('update:selectedTests', newVal);
-    updateCategorySelection();
-    updateSelectAllCheckbox();
-  });
-  watch(localSelectedCategories, (newVal) => {
-    emit('update:selectedCategories', newVal);
-    updateSelectAllCheckbox();
-  });
-  watch(localSelectAll, (newVal) => {
-    emit('update:selectAll', newVal);
+  // Initialize local states from props exactly once
+  onMounted(() => {
+    localSelectedTests.value = [...props.selectedTests];
+    localSelectedCategories.value = [...props.selectedCategories];
+    localSelectAll.value = props.selectAll;
   });
   
-  // Methods
+  // Emit local copies upward anytime they're updated
+  function emitLocalData() {
+    emit('update:selectedTests', localSelectedTests.value);
+    emit('update:selectedCategories', localSelectedCategories.value);
+    emit('update:selectAll', localSelectAll.value);
+  }
+  
+  // Toggle all tests
   function toggleSelectAll() {
     const allTestIds = getAllTestIds();
     if (localSelectAll.value) {
-      localSelectedTests.value = [...allTestIds];
-      localSelectedCategories.value = props.editiqueTests.categories.map((cat) => cat.nom);
+      localSelectedTests.value = allTestIds;
+      localSelectedCategories.value = props.editiqueTests.categories.map(c => c.nom);
     } else {
       localSelectedTests.value = [];
       localSelectedCategories.value = [];
     }
+    emitLocalData();
   }
   
   function toggleCategorySelection(category) {
     const isSelected = localSelectedCategories.value.includes(category.nom);
-    let categoryTests = [];
-  
-    if (category.sousCategories && category.sousCategories.length > 0) {
-      for (const sc of category.sousCategories) {
-        categoryTests.push(...sc.tests.map((t) => t.id));
-      }
-    } else {
-      categoryTests = category.tests.map((t) => t.id);
-    }
+    const categoryTests = getCategoryTestIds(category);
   
     if (isSelected) {
-      // Add all tests of this category
-      localSelectedTests.value = Array.from(new Set([...localSelectedTests.value, ...categoryTests]));
+      // add them
+      const merged = new Set([...localSelectedTests.value, ...categoryTests]);
+      localSelectedTests.value = Array.from(merged);
     } else {
-      // Remove all tests of this category
-      localSelectedTests.value = localSelectedTests.value.filter((id) => !categoryTests.includes(id));
+      // remove them
+      localSelectedTests.value = localSelectedTests.value.filter(id => !categoryTests.includes(id));
     }
-    updateSelectAllCheckbox();
+    emitLocalData();
   }
   
-  function toggleTestSelection() {
-    updateCategorySelection();
-    updateSelectAllCheckbox();
-  }
-  
-  function updateSelectAllCheckbox() {
-    const allTestIds = getAllTestIds();
-    localSelectAll.value =
-      allTestIds.length > 0 && allTestIds.every((id) => localSelectedTests.value.includes(id));
-  }
-  
-  function updateCategorySelection() {
-    const newlySelectedCategories = [];
-    for (const category of props.editiqueTests.categories) {
-      let categoryTests = [];
-      if (category.sousCategories && category.sousCategories.length > 0) {
-        for (const sc of category.sousCategories) {
-          categoryTests.push(...sc.tests.map((t) => t.id));
-        }
-      } else {
-        categoryTests = category.tests.map((t) => t.id);
-      }
-      if (
-        categoryTests.length > 0 &&
-        categoryTests.every((id) => localSelectedTests.value.includes(id))
-      ) {
-        newlySelectedCategories.push(category.nom);
-      }
-    }
-    localSelectedCategories.value = newlySelectedCategories;
-  }
-  
+  // Helpers
   function filterImportantTests(tests) {
-    return tests.filter((test) => test.conditions && test.conditions.length > 0);
+    return tests.filter(test => test.conditions && test.conditions.length > 0);
   }
   
   function getAllTestIds() {
-    const allTestIds = [];
-    for (const category of props.editiqueTests.categories) {
-      if (category.sousCategories && category.sousCategories.length > 0) {
-        for (const sc of category.sousCategories) {
-          allTestIds.push(...sc.tests.map((t) => t.id));
+    const ids = [];
+    for (const cat of props.editiqueTests.categories) {
+      if (cat.sousCategories?.length > 0) {
+        for (const sc of cat.sousCategories) {
+          ids.push(...sc.tests.map(t => t.id));
         }
       } else {
-        allTestIds.push(...category.tests.map((t) => t.id));
+        ids.push(...cat.tests.map(t => t.id));
       }
     }
-    return allTestIds;
+    return ids;
+  }
+  
+  function getCategoryTestIds(category) {
+    const tests = [];
+    if (category.sousCategories?.length > 0) {
+      for (const sc of category.sousCategories) {
+        tests.push(...sc.tests.map(t => t.id));
+      }
+    } else {
+      tests.push(...category.tests.map(t => t.id));
+    }
+    return tests;
   }
   </script>
   
