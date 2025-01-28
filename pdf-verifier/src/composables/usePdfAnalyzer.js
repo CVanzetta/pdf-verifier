@@ -1,4 +1,3 @@
-// usePdfAnalyzer.js
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Make sure you correctly provide the worker path
