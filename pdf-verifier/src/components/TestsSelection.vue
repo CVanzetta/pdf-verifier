@@ -8,7 +8,7 @@
           </label>
         </div>
   
-        <Accordion :value="multiple">
+        <Accordion :multiple="true">
           <AccordionPanel
             v-for="(category, index) in editiqueTests.categories"
             :key="index"
