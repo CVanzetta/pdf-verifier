@@ -91,73 +91,73 @@ const evaluateEditique = (test, textContent) => {
 
     switch (type) {
         case 'surface_max':
-        passed = evaluateSurfaceMax(condition, textContent);
-        break;
+            passed = evaluateSurfaceMax(condition, textContent);
+            break;
         case 'montant':
         passed = evaluateMontant(condition, textContent);
         break;
         case 'date':
-        passed = evaluateDate(condition, textContent);
-        break;
+            passed = evaluateDate(condition, textContent);
+            break;
         case 'texte':
         case 'texte_present':
-          passed = evaluateTexte(condition, textContent);
-          break;
+            passed = evaluateTexte(condition, textContent);
+            break;
         case 'texte_multi_colonnes':
-          passed = evaluateTexteMultiColonnes(condition, textContent);
-          break;
+            passed = evaluateTexteMultiColonnes(condition, textContent);
+            break;
         default:
-          console.error('Type de condition inconnu :', type);
-          return 'Failed';
-      }
-
-      if (!passed) {
+        console.error('Type de condition inconnu :', type);
         return 'Failed';
-      }
+    }
+
+    if (!passed) {
+        return 'Failed';
+    }
     }
 
     return 'Passed';
-  };
+};
 
   // Condition evaluations
-  const evaluateSurfaceMax = (condition, textContent) => {
+const evaluateSurfaceMax = (condition, textContent) => {
     const ref = normalizeText(condition.reference || '');
     const val = normalizeText(condition.value || '');
     const regex = new RegExp(`${ref}.*?(${val})`, 'i');
     return regex.test(textContent);
-  };
+};
 
-  const evaluateMontant = (condition, textContent) => {
+const evaluateMontant = (condition, textContent) => {
     const ref = normalizeText(condition.reference || '');
     // Adjust the regex to suit your needs
     const regex = new RegExp(`${ref}.*?(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?)`, 'i');
     return regex.test(textContent);
-  };
+};
 
-  const evaluateDate = (condition, textContent) => {
+const evaluateDate = (condition, textContent) => {
     const ref = normalizeText(condition.reference || '');
     const regex = new RegExp(`${ref}.*?(\\d{2}/\\d{2}/\\d{4})`, 'i');
     return regex.test(textContent);
-  };
+};
 
-  const evaluateTexte = (condition, textContent) => {
+const evaluateTexte = (condition, textContent) => {
     const val = normalizeText(condition.value || '');
     return textContent.includes(val);
-  };
+};
 
-  const evaluateTexteMultiColonnes = (condition, textContent) => {
+const evaluateTexteMultiColonnes = (condition, textContent) => {
     const normalizedText = normalizeText(textContent);
     const values = (condition.values || []).map((v) => normalizeText(v));
 
     return values.every((val) => normalizedText.includes(val));
-  };
+};
 
   // Fail comment
-  const generateComments = (test) => {
+const generateComments = (test) => {
     return `La condition ${test.article} n'a pas été remplie. Veuillez vérifier les exigences.`;
-  };
+};
 
-  return {
+return {
     analyzePdfFile
-  };
+};
 }
