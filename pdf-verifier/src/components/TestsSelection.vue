@@ -63,34 +63,34 @@
         </Accordion>
     </template>
     </Card>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted } from 'vue';
-  import Card from 'primevue/card';
-  import Checkbox from 'primevue/checkbox';
-  import Accordion from 'primevue/accordion';
-  import AccordionPanel from 'primevue/accordionpanel';
-  import AccordionHeader from 'primevue/accordionheader';
-  import AccordionContent from 'primevue/accordioncontent';
-  
-  const props = defineProps({
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import Card from 'primevue/card';
+import Checkbox from 'primevue/checkbox';
+import Accordion from 'primevue/accordion';
+import AccordionPanel from 'primevue/accordionpanel';
+import AccordionHeader from 'primevue/accordionheader';
+import AccordionContent from 'primevue/accordioncontent';
+
+const props = defineProps({
     editiqueTests: {
-      type: Object,
-      default: () => ({ categories: [] })
+    type: Object,
+    default: () => ({ categories: [] })
     },
     // The parent is the single source of truth:
     selectedTests: {
-      type: Array,
-      default: () => []
+    type: Array,
+    default: () => []
     },
     selectedCategories: {
-      type: Array,
-      default: () => []
+    type: Array,
+    default: () => []
     },
     selectAll: {
-      type: Boolean,
-      default: false
+    type: Boolean,
+    default: false
     }
   });
   
