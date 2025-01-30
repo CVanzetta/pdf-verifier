@@ -25,43 +25,43 @@
             </div>
             </AccordionHeader>
             <AccordionContent>
-              <div v-if="category.sousCategories && category.sousCategories.length > 0">
+            <div v-if="category.sousCategories && category.sousCategories.length > 0">
                 <div
-                  v-for="sc in category.sousCategories"
-                  :key="sc.nom"
-                  class="mt-2 border-t pt-2"
+                v-for="sc in category.sousCategories"
+                :key="sc.nom"
+                class="mt-2 border-t pt-2"
                 >
-                  <div class="font-semibold">{{ sc.nom }}</div>
-                  <ul class="list mt-2 ml-4">
+                <div class="font-semibold">{{ sc.nom }}</div>
+                <ul class="list mt-2 ml-4">
                     <li
-                      v-for="test in filterImportantTests(sc.tests)"
-                      :key="test.id"
-                      class="flex items-center gap-2"
-                    >
-                      <Checkbox v-model="localSelectedTests" :value="test.id" @change="emitLocalData" />
-                      <span>{{ test.categorie + ' - ' + test.article }}</span>
-                      <i class="pi pi-info-circle ml-2 text-blue-500"></i>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div v-else>
-                <ul class="list mt-2">
-                  <li
-                    v-for="test in filterImportantTests(category.tests)"
+                    v-for="test in filterImportantTests(sc.tests)"
                     :key="test.id"
                     class="flex items-center gap-2"
-                  >
+                    >
                     <Checkbox v-model="localSelectedTests" :value="test.id" @change="emitLocalData" />
                     <span>{{ test.categorie + ' - ' + test.article }}</span>
                     <i class="pi pi-info-circle ml-2 text-blue-500"></i>
-                  </li>
+                    </li>
                 </ul>
-              </div>
+                </div>
+            </div>
+            <div v-else>
+                <ul class="list mt-2">
+                <li
+                    v-for="test in filterImportantTests(category.tests)"
+                    :key="test.id"
+                    class="flex items-center gap-2"
+                >
+                    <Checkbox v-model="localSelectedTests" :value="test.id" @change="emitLocalData" />
+                    <span>{{ test.categorie + ' - ' + test.article }}</span>
+                    <i class="pi pi-info-circle ml-2 text-blue-500"></i>
+                </li>
+                </ul>
+            </div>
             </AccordionContent>
-          </AccordionPanel>
+        </AccordionPanel>
         </Accordion>
-      </template>
+    </template>
     </Card>
   </template>
   
