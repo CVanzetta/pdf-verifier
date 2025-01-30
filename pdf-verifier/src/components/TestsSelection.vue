@@ -1,28 +1,28 @@
 <template>
     <Card header="Sélectionner les tests à exécuter" class="mb-5">
-      <template #content>
+    <template #content>
         <div class="flex items-center gap-2 mb-4">
-          <Checkbox v-model="localSelectAll" @change="toggleSelectAll" :binary="true" />
-          <label class="cursor-pointer select-none">
+        <Checkbox v-model="localSelectAll" @change="toggleSelectAll" :binary="true" />
+        <label class="cursor-pointer select-none">
             Sélectionner tous les tests disponibles
-          </label>
+        </label>
         </div>
-  
+
         <Accordion :multiple="true">
-          <AccordionPanel
+        <AccordionPanel
             v-for="(category, index) in editiqueTests.categories"
             :key="index"
             :value="index.toString()"
-          >
+        >
             <AccordionHeader>
-              <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2">
                 <Checkbox
-                  v-model="localSelectedCategories"
-                  :value="category.nom"
-                  @change="() => toggleCategorySelection(category)"
+                v-model="localSelectedCategories"
+                :value="category.nom"
+                @change="() => toggleCategorySelection(category)"
                 />
                 <span>{{ category.nom }}</span>
-              </div>
+            </div>
             </AccordionHeader>
             <AccordionContent>
               <div v-if="category.sousCategories && category.sousCategories.length > 0">
