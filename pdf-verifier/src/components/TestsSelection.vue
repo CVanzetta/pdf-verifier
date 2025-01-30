@@ -134,43 +134,43 @@ function toggleCategorySelection(category) {
 
     if (isSelected) {
       // add them
-      const merged = new Set([...localSelectedTests.value, ...categoryTests]);
-      localSelectedTests.value = Array.from(merged);
+    const merged = new Set([...localSelectedTests.value, ...categoryTests]);
+    localSelectedTests.value = Array.from(merged);
     } else {
       // remove them
-      localSelectedTests.value = localSelectedTests.value.filter(id => !categoryTests.includes(id));
+    localSelectedTests.value = localSelectedTests.value.filter(id => !categoryTests.includes(id));
     }
     emitLocalData();
-  }
-  
+}
+
   // Helpers
-  function filterImportantTests(tests) {
+function filterImportantTests(tests) {
     return tests.filter(test => test.conditions && test.conditions.length > 0);
-  }
-  
-  function getAllTestIds() {
+}
+
+function getAllTestIds() {
     const ids = [];
     for (const cat of props.editiqueTests.categories) {
-      if (cat.sousCategories?.length > 0) {
+    if (cat.sousCategories?.length > 0) {
         for (const sc of cat.sousCategories) {
-          ids.push(...sc.tests.map(t => t.id));
+        ids.push(...sc.tests.map(t => t.id));
         }
-      } else {
+    } else {
         ids.push(...cat.tests.map(t => t.id));
-      }
+    }
     }
     return ids;
-  }
-  
-  function getCategoryTestIds(category) {
+}
+
+function getCategoryTestIds(category) {
     const tests = [];
     if (category.sousCategories?.length > 0) {
-      for (const sc of category.sousCategories) {
+    for (const sc of category.sousCategories) {
         tests.push(...sc.tests.map(t => t.id));
-      }
+    }
     } else {
-      tests.push(...category.tests.map(t => t.id));
+    tests.push(...category.tests.map(t => t.id));
     }
     return tests;
-  }
-  </script>
+}
+</script>
