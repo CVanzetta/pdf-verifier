@@ -92,46 +92,46 @@ const props = defineProps({
     type: Boolean,
     default: false
     }
-  });
-  
-  const emit = defineEmits(['update:selectedTests','update:selectedCategories','update:selectAll']);
-  
+});
+
+const emit = defineEmits(['update:selectedTests','update:selectedCategories','update:selectAll']);
+
   // Local copies for internal UI state
-  const localSelectedTests = ref([]);
-  const localSelectedCategories = ref([]);
-  const localSelectAll = ref(false);
-  
+const localSelectedTests = ref([]);
+const localSelectedCategories = ref([]);
+const localSelectAll = ref(false);
+
   // Initialize local states from props exactly once
-  onMounted(() => {
+onMounted(() => {
     localSelectedTests.value = [...props.selectedTests];
     localSelectedCategories.value = [...props.selectedCategories];
     localSelectAll.value = props.selectAll;
-  });
-  
+});
+
   // Emit local copies upward anytime they're updated
-  function emitLocalData() {
+function emitLocalData() {
     emit('update:selectedTests', localSelectedTests.value);
     emit('update:selectedCategories', localSelectedCategories.value);
     emit('update:selectAll', localSelectAll.value);
-  }
-  
+}
+
   // Toggle all tests
-  function toggleSelectAll() {
+function toggleSelectAll() {
     const allTestIds = getAllTestIds();
     if (localSelectAll.value) {
-      localSelectedTests.value = allTestIds;
-      localSelectedCategories.value = props.editiqueTests.categories.map(c => c.nom);
+    localSelectedTests.value = allTestIds;
+    localSelectedCategories.value = props.editiqueTests.categories.map(c => c.nom);
     } else {
-      localSelectedTests.value = [];
-      localSelectedCategories.value = [];
+    localSelectedTests.value = [];
+    localSelectedCategories.value = [];
     }
     emitLocalData();
-  }
-  
-  function toggleCategorySelection(category) {
+    }
+
+function toggleCategorySelection(category) {
     const isSelected = localSelectedCategories.value.includes(category.nom);
     const categoryTests = getCategoryTestIds(category);
-  
+
     if (isSelected) {
       // add them
       const merged = new Set([...localSelectedTests.value, ...categoryTests]);
@@ -174,4 +174,3 @@ const props = defineProps({
     return tests;
   }
   </script>
-  
