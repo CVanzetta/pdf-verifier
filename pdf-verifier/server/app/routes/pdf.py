@@ -67,7 +67,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'analyse du PDF : {str(e)}")
 
-@router.post("/pdf/analyze")
+@router.post("/pdf/analyze-text")
 async def analyze_pdf_images(file: UploadFile = File(...)):
     """Convertit un PDF en images et retourne les chemins des images générées."""
     
