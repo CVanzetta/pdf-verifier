@@ -4,6 +4,9 @@ import pytesseract
 import shutil
 import os
 from werkzeug.utils import secure_filename
+import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"  # Mets le bon chemin si différent
+
 
 router = APIRouter()
 
