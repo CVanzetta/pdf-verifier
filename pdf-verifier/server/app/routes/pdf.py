@@ -4,6 +4,8 @@ import pytesseract
 import shutil
 import os
 import uuid
+import cv2  # OpenCV pour le prétraitement
+import numpy as np
 
 router = APIRouter()
 
@@ -15,28 +17,23 @@ MAX_FILE_SIZE_MB = 5  # Taille max en Mo
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(TEMP_IMAGE_DIR, exist_ok=True)
 
-def save_uploaded_file(file: UploadFile, directory: str) -> str:
-    """Enregistre un fichier dans un répertoire temporaire."""
-    file_path = os.path.join(directory, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return file_path
-
-def delete_temp_files(directory: str):
-    """Supprime les fichiers temporaires après utilisation."""
-    for filename in os.listdir(directory):
-        file_path = os.path.join(directory, filename)
-        try:
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-        except Exception as e:
-            print(f"Erreur lors de la suppression du fichier {file_path}: {e}")
+def preprocess_image(image):
+    """
+    Applique un prétraitement à une image pour améliorer la reconnaissance OCR.
+    - Convertit en niveaux de gris
+    - Applique un flou gaussien
+    - Effectue une binarisation avec Otsu
+    """
+    gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return binary
 
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     """Enregistre un fichier PDF reçu avec vérifications d'extension et de taille"""
     file_extension = os.path.splitext(file.filename)[1].lower()
-
+    
     # Vérifier l'extension
     if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont autorisés")
@@ -49,26 +46,31 @@ async def upload_pdf(file: UploadFile = File(...)):
     # Réinitialiser le pointeur de lecture du fichier
     await file.seek(0)
 
-    file_path = save_uploaded_file(file, UPLOAD_DIR)
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
 
-    return {"filename": file.filename, "message": "PDF bien reçu", "path": file_path}
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {"filename": file.filename, "message": "PDF bien reçu"}
 
 @router.post("/analyze-text")
-async def analyze_pdf_text(file: UploadFile = File(...)):
-    """Analyse un PDF et extrait le texte"""
+async def analyze_pdf(file: UploadFile = File(...)):
+    """Analyse un PDF, applique un prétraitement et extrait le texte OCR"""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
 
     try:
+        # Lire le contenu du fichier PDF
         pdf_bytes = await file.read()
+        
+        # Convertir le PDF en images
         images = convert_from_bytes(pdf_bytes)
 
         extracted_text = []
         for i, img in enumerate(images):
-            text = pytesseract.image_to_string(img)
+            processed_img = preprocess_image(img)  # 🔹 OpenCV prétraitement ici
+            text = pytesseract.image_to_string(processed_img)
             extracted_text.append({"page": i + 1, "text": text})
-
-        delete_temp_files(TEMP_IMAGE_DIR)
 
         return {"status": "Analyse réussie", "text_data": extracted_text}
 
@@ -77,19 +79,20 @@ async def analyze_pdf_text(file: UploadFile = File(...)):
 
 @router.post("/analyze-images")
 async def analyze_pdf_images(file: UploadFile = File(...)):
-    """Convertit un PDF en images et retourne les chemins des images générées."""
+    """Convertit un PDF en images et applique un prétraitement OpenCV"""
     
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-
+    
     try:
         pdf_bytes = await file.read()
         images = convert_from_bytes(pdf_bytes)
 
         image_paths = []
         for i, img in enumerate(images):
+            processed_img = preprocess_image(img)  # 🔹 OpenCV prétraitement ici
             image_filename = f"{TEMP_IMAGE_DIR}/page_{uuid.uuid4().hex}.png"
-            img.save(image_filename, "PNG")
+            cv2.imwrite(image_filename, processed_img)  # Sauvegarde l'image traitée
             image_paths.append(image_filename)
 
         return {"status": "Conversion réussie", "images": image_paths}
