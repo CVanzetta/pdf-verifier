@@ -15,11 +15,28 @@ MAX_FILE_SIZE_MB = 5  # Taille max en Mo
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(TEMP_IMAGE_DIR, exist_ok=True)
 
+def save_uploaded_file(file: UploadFile, directory: str) -> str:
+    """Enregistre un fichier dans un répertoire temporaire."""
+    file_path = os.path.join(directory, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return file_path
+
+def delete_temp_files(directory: str):
+    """Supprime les fichiers temporaires après utilisation."""
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Erreur lors de la suppression du fichier {file_path}: {e}")
+
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     """Enregistre un fichier PDF reçu avec vérifications d'extension et de taille"""
     file_extension = os.path.splitext(file.filename)[1].lower()
-    
+
     # Vérifier l'extension
     if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont autorisés")
@@ -32,24 +49,18 @@ async def upload_pdf(file: UploadFile = File(...)):
     # Réinitialiser le pointeur de lecture du fichier
     await file.seek(0)
 
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    file_path = save_uploaded_file(file, UPLOAD_DIR)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    return {"filename": file.filename, "message": "PDF bien reçu"}
+    return {"filename": file.filename, "message": "PDF bien reçu", "path": file_path}
 
 @router.post("/analyze-text")
-async def analyze_pdf(file: UploadFile = File(...)):
-    """Analyse un PDF, extrait le texte et supprime le fichier après utilisation"""
+async def analyze_pdf_text(file: UploadFile = File(...)):
+    """Analyse un PDF et extrait le texte"""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
 
     try:
-        # Lire le contenu du fichier PDF
         pdf_bytes = await file.read()
-        
-        # Convertir le PDF en images
         images = convert_from_bytes(pdf_bytes)
 
         extracted_text = []
@@ -57,10 +68,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
             text = pytesseract.image_to_string(img)
             extracted_text.append({"page": i + 1, "text": text})
 
-        # Supprimer le fichier temporaire après analyse
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        delete_temp_files(TEMP_IMAGE_DIR)
 
         return {"status": "Analyse réussie", "text_data": extracted_text}
 
@@ -73,12 +81,9 @@ async def analyze_pdf_images(file: UploadFile = File(...)):
     
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-    
-    try:
-        # Lire le contenu du fichier
-        pdf_bytes = await file.read()
 
-        # Convertir le PDF en images
+    try:
+        pdf_bytes = await file.read()
         images = convert_from_bytes(pdf_bytes)
 
         image_paths = []
