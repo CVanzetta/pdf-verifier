@@ -139,3 +139,72 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Erreur lors de l'extraction des images du PDF : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'extraction des images du PDF : {str(e)}")
+    
+@router.post("/detect-elements")
+async def detect_elements_in_pdf(file: UploadFile = File(...)):
+    """Compare les images extraites du PDF aux modèles de référence avec ORB"""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+
+    try:
+        # Lire le contenu du fichier PDF
+        pdf_bytes = await file.read()
+        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+        # Liste pour stocker les résultats
+        detection_results = []
+
+        # Charger les modèles de référence (logos, signatures, filigranes)
+        model_images = {}
+        model_dir = "reference_models"  # 📌 Dossier où stocker les modèles
+        for model_name in os.listdir(model_dir):
+            model_path = os.path.join(model_dir, model_name)
+            model_images[model_name] = cv2.imread(model_path, cv2.IMREAD_GRAYSCALE)
+
+        # Initialiser ORB
+        orb = cv2.ORB_create()
+
+        for page_number, page in enumerate(pdf_document):
+            images = page.get_images(full=True)
+            for img_index, img in enumerate(images):
+                xref = img[0]
+                base_image = pdf_document.extract_image(xref)
+                image_bytes = base_image["image"]
+
+                # Convertir l'image en format lisible par OpenCV
+                image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+                extracted_image = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)
+
+                # Calculer les descripteurs ORB pour l'image extraite
+                kp1, des1 = orb.detectAndCompute(extracted_image, None)
+
+                best_match = None
+                best_score = 0
+
+                for model_name, model_img in model_images.items():
+                    kp2, des2 = orb.detectAndCompute(model_img, None)
+
+                    # Vérifier que descripteurs existent
+                    if des1 is not None and des2 is not None:
+                        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+                        matches = bf.match(des1, des2)
+
+                        # Calculer un score de correspondance basé sur le nombre de bons matchs
+                        score = len(matches)
+                        if score > best_score:
+                            best_score = score
+                            best_match = model_name
+
+                detection_results.append({
+                    "page": page_number + 1,
+                    "image_index": img_index,
+                    "best_match": best_match if best_match else "Aucune correspondance",
+                    "score": best_score
+                })
+
+        logger.info(f"Détection d'éléments terminée pour {file.filename}")
+        return {"status": "Détection terminée", "results": detection_results}
+
+    except Exception as e:
+        logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
