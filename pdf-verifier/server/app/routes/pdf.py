@@ -92,6 +92,49 @@ async def upload_pdf(file: UploadFile = File(...)):
     logger.info(f"Fichier reçu : {file.filename}")
     return {"filename": file.filename, "message": "PDF bien reçu"}
 
+@router.post("/convert-images")
+async def convert_pdf_to_images(file: UploadFile = File(...)):
+    """Convertit un PDF en images avec prétraitement OpenCV (préparation OCR)."""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+    
+    try:
+        pdf_bytes = await file.read()
+        images = convert_from_bytes(pdf_bytes)
+
+        image_paths = []
+        for i, img in enumerate(images):
+            processed_img = preprocess_image(img)
+            image_filename = f"{TEMP_IMAGE_DIR}/page_{i+1}_{uuid.uuid4().hex}.png"
+            cv2.imwrite(image_filename, processed_img)  
+            image_paths.append(image_filename)
+
+        return {"status": "Conversion réussie", "images": image_paths}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la conversion : {str(e)}")
+
+@router.post("/analyze-text")
+async def analyze_pdf(file: UploadFile = File(...)):
+    """Analyse un PDF, applique un prétraitement et extrait le texte OCR."""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+
+    try:
+        pdf_bytes = await file.read()
+        images = convert_from_bytes(pdf_bytes)
+
+        extracted_text = []
+        for i, img in enumerate(images):
+            processed_img = preprocess_image(img)
+            text = pytesseract.image_to_string(processed_img)
+            extracted_text.append({"page": i + 1, "text": text})
+
+        return {"status": "Analyse réussie", "text_data": extracted_text}
+
+    except Exception as e:
+        return HTTPException(status_code=500, detail=f"Erreur OCR : {str(e)}")
+
 @router.post("/extract-images")
 async def extract_images_from_pdf(file: UploadFile = File(...)):
     """Extrait les images intégrées au PDF (logos, signatures, filigranes)."""
@@ -111,7 +154,6 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
                 image_bytes = base_image["image"]
 
                 image_filename = f"{EXTRACTED_IMAGES_DIR}/page_{page_number+1}_img_{img_index}.png"
-
                 with open(image_filename, "wb") as image_file:
                     image_file.write(image_bytes)
 
@@ -120,7 +162,7 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
         return {"status": "Extraction réussie", "images": image_paths}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de l'extraction des images du PDF : {str(e)}")
+        return HTTPException(status_code=500, detail=f"Erreur extraction images : {str(e)}")
 
 @router.post("/detect-elements")
 async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "ORB"):
@@ -135,26 +177,57 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
         detection_results = []
         reference_images = load_reference_images()
 
+        # Vérifier qu'on a bien chargé des modèles de référence
+        if not reference_images:
+            raise HTTPException(status_code=500, detail="Aucun modèle d'image de référence trouvé !")
+
         for page_number, page in enumerate(pdf_document):
             images = page.get_images(full=True)
             for img_index, img in enumerate(images):
                 xref = img[0]
                 base_image = pdf_document.extract_image(xref)
+
+                if not base_image:
+                    logger.warning(f"Impossible d'extraire l'image {img_index} de la page {page_number + 1}")
+                    continue
+
                 image_bytes = base_image["image"]
 
+                # Convertir l'image en format utilisable par OpenCV
                 image_array = np.frombuffer(image_bytes, dtype=np.uint8)
                 extracted_image = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)
 
+                # Vérifier si l'image a bien été décodée
+                if extracted_image is None:
+                    logger.warning(f"L'image {img_index} de la page {page_number + 1} n'a pas pu être chargée.")
+                    continue
+
                 best_match, best_score = match_images(extracted_image, reference_images, method)
+
+                # Déterminer le seuil de validation en fonction du type d'élément détecté
+                if best_match:
+                    if "filigrane" in best_match.lower():
+                        threshold = 450
+                    elif "logo" in best_match.lower():
+                        threshold = 450
+                    elif "signature" in best_match.lower():
+                        threshold = 300
+                    else:
+                        threshold = CONFIDENCE_THRESHOLD  # Seuil par défaut
+
+                    # Vérification du score par rapport au seuil défini
+                    if best_score < threshold:
+                        best_match = "Aucune correspondance"
 
                 detection_results.append({
                     "page": page_number + 1,
                     "image_index": img_index,
-                    "best_match": best_match if best_match and best_score > CONFIDENCE_THRESHOLD else "Aucune correspondance",
+                    "best_match": best_match,
                     "score": best_score
                 })
 
         return {"status": "Détection terminée", "results": detection_results}
 
     except Exception as e:
+        logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
         return HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
