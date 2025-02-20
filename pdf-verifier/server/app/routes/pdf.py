@@ -127,6 +127,13 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
                 image_paths.append(image_filename)
 
         logger.info(f"Extraction d'images terminée pour {file.filename}")
+
+        # TODO : Comparer ces images aux modèles connus (logos, signatures, filigranes)
+        # Étapes :
+        # 1️⃣ Charger les modèles d’images de référence
+        # 2️⃣ Appliquer ORB/SIFT pour comparer chaque image extraite avec les modèles
+        # 3️⃣ Retourner un score de correspondance (présent/absent + taux de confiance)
+
         return {"status": "Extraction réussie", "images": image_paths}
 
     except Exception as e:
