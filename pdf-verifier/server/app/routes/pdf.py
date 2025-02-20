@@ -205,6 +205,7 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
                 best_match, best_score = match_images(extracted_image, reference_images, method)
 
                 # Déterminer le seuil de validation en fonction du type d'élément détecté 450-500 Seuil élevé et 300-450 Seuil moyen moins de 300 Seuil bas (rique de faux positifs)
+                # J'ai l'impression que le filigranne a un risque de faux positif a 353
                 if best_match:
                     if "filigrane" in best_match.lower():
                         threshold = 450
