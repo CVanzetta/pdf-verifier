@@ -1,25 +1,25 @@
 <template>
     <Card header="Outil de vérification PDF" class="mb-5">
-      <template #content>
+    <template #content>
         <FileUpload
-          name="pdf[]"
-          accept="application/pdf"
+        name="pdf[]"
+        accept="application/pdf"
           :maxFileSize="10 * 1024 * 1024"
-          custom-upload
-          :multiple="false"
-          @select="onFileSelect"
-          @remove="onRemoveFile"
+        custom-upload
+        :multiple="false"
+        @select="onFileSelect"
+        @remove="onRemoveFile"
         >
-          <!-- Header Slot -->
-          <template #header="{ chooseCallback, clearCallback, files }">
+        <!-- Header Slot -->
+        <template #header="{ chooseCallback, clearCallback, files }">
             <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
-              <div class="flex gap-2">
+            <div class="flex gap-2">
                 <Button
-                  @click="chooseCallback"
-                  icon="pi pi-folder-open"
-                  rounded
-                  outlined
-                  severity="secondary"
+                @click="chooseCallback"
+                icon="pi pi-folder-open"
+                rounded
+                outlined
+                severity="secondary"
                 ></Button>
                 <Button
                 @click="clearCallback"
@@ -29,22 +29,22 @@
                 severity="danger"
                 :disabled="!files || files.length === 0"
                 ></Button>
-              </div>
-              <span v-if="pdfFile">Fichier sélectionné : {{ pdfFile.name }}</span>
             </div>
-          </template>
-  
-          <!-- Content Slot -->
-          <template #content="{ files }">
+            <span v-if="pdfFile">Fichier sélectionné : {{ pdfFile.name }}</span>
+            </div>
+        </template>
+
+        <!-- Content Slot -->
+        <template #content="{ files }">
             <div v-if="files.length > 0" class="mt-4">
-              <ul>
+            <ul>
                 <li
-                  v-for="file in files"
-                  :key="file.name"
-                  class="flex justify-between items-center"
+                v-for="file in files"
+                :key="file.name"
+                class="flex justify-between items-center"
                 >
-                  <span>{{ file.name }}</span>
-                  <Button
+                <span>{{ file.name }}</span>
+                <Button
                     icon="pi pi-times"
                     class="p-button-text p-button-danger"
                     @click="$emit('remove', file)"
