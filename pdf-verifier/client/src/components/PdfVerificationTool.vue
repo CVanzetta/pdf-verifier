@@ -96,7 +96,7 @@
     import FileUpload from 'primevue/fileupload';
     import Button from 'primevue/button';
     import Card from 'primevue/card';
-    import ResultTable from './ResultTable.vue'; // 📥 Import du tableau des résultats
+    import ResultTable from './ResultTable.vue';
 
     // Props
     const props = defineProps({
