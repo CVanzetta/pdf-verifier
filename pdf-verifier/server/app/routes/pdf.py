@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pdf2image import convert_from_bytes
 import pytesseract
@@ -232,3 +233,42 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
     except Exception as e:
         logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
         return HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
+
+TESTS_FILE = "tests.json"
+
+def load_tests():
+    """Charge les tests depuis le fichier JSON."""
+    with open(TESTS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+    
+@router.post("/validate")
+async def validate_pdf(file: UploadFile = File(...)):
+    """Valide le contenu du PDF en fonction des tests définis dans le fichier JSON."""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+
+    try:
+        pdf_bytes = await file.read()
+        tests = load_tests()
+        images = convert_from_bytes(pdf_bytes)
+        extracted_text = " ".join([pytesseract.image_to_string(preprocess_image(img)) for img in images])
+
+        results = []
+
+        # Vérification des textes
+        for category in tests["categories"]:
+            for test in category.get("tests", []):
+                for condition in test["conditions"]:
+                    status = "Passed" if condition["value"].lower() in extracted_text.lower() else "Failed"
+                    results.append({
+                        "status": status,
+                        "categorie": category["nom"],
+                        "article": test.get("article", "N/A"),
+                        "comments": f'Attendu: "{condition["value"]}" - {"Trouvé" if status == "Passed" else "Non trouvé"}',
+                    })
+
+        return {"status": "Validation terminée", "results": results}
+
+    except Exception as e:
+        return HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
+

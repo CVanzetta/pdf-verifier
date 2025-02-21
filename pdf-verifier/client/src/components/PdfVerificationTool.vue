@@ -1,14 +1,14 @@
 <template>
     <Card header="Outil de vérification PDF" class="mb-5">
-        <template #content>
+    <template #content>
         <FileUpload
-            name="pdf[]"
-            accept="application/pdf"
-            :maxFileSize="10 * 1024 * 1024"
-            custom-upload
-            :multiple="false"
-            @select="onFileSelect"
-            @remove="onRemoveFile"
+        name="pdf[]"
+        accept="application/pdf"
+          :maxFileSize="10 * 1024 * 1024"
+        custom-upload
+        :multiple="false"
+        @select="onFileSelect"
+        @remove="onRemoveFile"
         >
         <!-- Header Slot -->
         <template #header="{ chooseCallback, clearCallback, files }">
@@ -56,9 +56,16 @@
 
         <!-- Empty Slot -->
         <template #empty>
-            <div class="flex flex-col items-center justify-center text-center py-10">
-            <div class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32">
-                <i class="pi pi-cloud-upload text-gray-500" style="font-size:4rem;"></i>
+            <div
+            class="flex flex-col items-center justify-center text-center py-10"
+            >
+            <div
+                class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32"
+            >
+                <i
+                class="pi pi-cloud-upload text-gray-500"
+                style="font-size: 4rem"
+                ></i>
             </div>
             <p class="mt-6 mb-0 text-lg font-semibold">
                 Glissez-déposez les fichiers ici
@@ -72,52 +79,79 @@
         icon="pi pi-play"
         class="mt-3"
         :loading="loading"
-        :disabled="loading || !pdfFile || !selectedTests || selectedTests.length === 0"
-        @click="$emit('analyzePdf')"
+        :disabled="
+            loading || !pdfFile || !selectedTests || selectedTests.length === 0
+        "
+        @click="analyzePdf"
         />
     </template>
     </Card>
-</template>
+
+    <!-- Résultats des tests -->
+    <ResultTable :results="results" />
+    </template>
 
     <script setup>
-import { computed } from 'vue';
-import FileUpload from 'primevue/fileupload';
-import Button from 'primevue/button';
-import Card from 'primevue/card';
+    import { ref } from 'vue';
+    import FileUpload from 'primevue/fileupload';
+    import Button from 'primevue/button';
+    import Card from 'primevue/card';
+    import ResultTable from './ResultsTable.vue';
 
-  // Props
-const props = defineProps({
+    // Props
+    const props = defineProps({
     pdfFile: {
-        type: Object,
-        default: null
+    type: Object,
+    default: null,
     },
     loading: {
-        type: Boolean,
-        default: false
+    type: Boolean,
+    default: false,
     },
     selectedTests: {
-        type: Array,
-        default: () => []
-    }
+    type: Array,
+    default: () => [],
+    },
 });
 
   // Emits
 const emit = defineEmits(['update:pdfFile', 'analyzePdf']);
 
-  // Methods
-    function onFileSelect(event) {
+  // Résultats des tests
+const results = ref([]);
+
+  // Méthodes
+function onFileSelect(event) {
     if (event.files.length > 0) {
-        const file = event.files[event.files.length - 1];
-        emit('update:pdfFile', file);
-      // Restrict to only one file
-        event.files.splice(0, event.files.length, file);
-        console.log('Fichier sélectionné:', file?.name);
+    const file = event.files[event.files.length - 1];
+    emit('update:pdfFile', file);
+    event.files.splice(0, event.files.length, file);
+    console.log('Fichier sélectionné:', file?.name);
     }
 }
 
-    function onRemoveFile() {
+function onRemoveFile() {
     emit('update:pdfFile', null);
     console.log('Fichier retiré');
 }
 
+  // Lancer les tests
+async function analyzePdf() {
+    if (!props.pdfFile) return;
+    const formData = new FormData();
+    formData.append('file', props.pdfFile);
+
+    try {
+    const response = await fetch('http://127.0.0.1:8000/validate', {
+        method: 'POST',
+        body: formData,
+    });
+
+    const result = await response.json();
+      results.value = result.errors || []; // On récupère les erreurs
+    console.log('Résultats des tests:', results.value);
+    } catch (error) {
+    console.error('Erreur lors de la validation du PDF:', error);
+    }
+}
 </script>
