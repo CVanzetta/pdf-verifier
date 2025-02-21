@@ -9,18 +9,18 @@
                 class="pi pi-check-circle"
                 style="color: green;"
                 title="Réussi"
-              ></i>
-              <i
+            ></i>
+            <i
                 v-else-if="data.status === 'Failed'"
                 class="pi pi-times-circle"
                 style="color: red;"
                 title="Échoué"
             ></i>
             </template>
-          </Column>
-          <Column field="categorie" header="Catégorie" />
-          <Column field="article" header="Article" />
-          <Column field="comments" header="Commentaires" />
+        </Column>
+        <Column field="categorie" header="Catégorie" />
+        <Column field="article" header="Article" />
+        <Column field="comments" header="Commentaires" />
         </DataTable>
     </template>
     </Card>
