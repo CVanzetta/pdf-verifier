@@ -24,18 +24,17 @@
         </DataTable>
       </template>
     </Card>
-  </template>
-  
-  <script setup>
-  import Card from 'primevue/card';
-  import DataTable from 'primevue/datatable';
-  import Column from 'primevue/column';
-  
-  const props = defineProps({
+</template>
+
+<script setup>
+import Card from 'primevue/card';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+
+const props = defineProps({
     results: {
-      type: Array,
-      default: () => [],
+    type: Array,
+    default: () => [],
     },
-  });
-  </script>
-  
+});
+</script>
