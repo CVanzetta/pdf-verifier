@@ -1,10 +1,10 @@
 <template>
     <Card header="Résultats des tests" class="mb-5">
-      <template #content>
+    <template #content>
         <DataTable :value="results" class="p-datatable-sm">
-          <Column field="status" header="Statut">
+        <Column field="status" header="Statut">
             <template #body="{ data }">
-              <i
+            <i
                 v-if="data.status === 'Passed'"
                 class="pi pi-check-circle"
                 style="color: green;"
@@ -15,14 +15,14 @@
                 class="pi pi-times-circle"
                 style="color: red;"
                 title="Échoué"
-              ></i>
+            ></i>
             </template>
           </Column>
           <Column field="categorie" header="Catégorie" />
           <Column field="article" header="Article" />
           <Column field="comments" header="Commentaires" />
         </DataTable>
-      </template>
+    </template>
     </Card>
 </template>
 
