@@ -175,8 +175,18 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
                 xref = img[0]
                 base_image = pdf_document.extract_image(xref)
                 image_bytes = base_image["image"]
-                # Récupération de la bounding box de l'image
-                bbox = page.get_image_bbox(xref)
+                # Tentative de récupération de la bounding box
+                try:
+                    bbox = page.get_image_bbox(xref)
+                    position = {
+                        "x0": bbox.x0,
+                        "y0": bbox.y0,
+                        "x1": bbox.x1,
+                        "y1": bbox.y1
+                    }
+                except Exception as e:
+                    logger.error(f"Erreur get_image_bbox pour xref {xref}: {str(e)}")
+                    position = None
                 image_filename = f"{EXTRACTED_IMAGES_DIR}/page_{page_number+1}_img_{img_index}.png"
                 with open(image_filename, "wb") as image_file:
                     image_file.write(image_bytes)
@@ -184,12 +194,7 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
                     "page": page_number + 1,
                     "image_index": img_index,
                     "image_path": image_filename,
-                    "position": {
-                        "x0": bbox.x0,  # Coordonnée gauche
-                        "y0": bbox.y0,  # Coordonnée haute
-                        "x1": bbox.x1,  # Coordonnée droite
-                        "y1": bbox.y1   # Coordonnée basse
-                    }
+                    "position": position
                 })
         return {"status": "Extraction réussie", "images": image_positions}
     except Exception as e:
@@ -349,7 +354,6 @@ async def verify_positions(file: UploadFile = File(...)):
                     })
                 # Vérification de la signature sur la première page
                 if i == 0 and "signature" in text:
-                    # Pour la signature, on vérifie par exemple que le texte se trouve en bas
                     if hasattr(img, "size"):
                         page_height = img.size[1]
                     else:
