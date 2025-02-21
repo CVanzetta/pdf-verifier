@@ -8,7 +8,7 @@ import os
 import uuid
 import cv2  # OpenCV pour le prétraitement et la détection
 import numpy as np
-import fitz  # PyMuPDF pour extraire les images
+import fitz  # PyMuPDF pour extraire les images et leurs positions
 import logging
 
 # Dossiers supplémentaires
@@ -92,12 +92,10 @@ def match_images(extracted_image, reference_images, method="ORB"):
 
     for model_name, model_img in reference_images.items():
         kp2, des2 = detector.detectAndCompute(model_img, None)
-
         if des1 is not None and des2 is not None:
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
             matches = bf.match(des1, des2)
             score = len(matches)
-
             if score > best_score:
                 best_score = score
                 best_match = model_name
@@ -108,7 +106,6 @@ def match_images(extracted_image, reference_images, method="ORB"):
 async def upload_pdf(file: UploadFile = File(...)):
     """Enregistre un fichier PDF après vérifications d'extension et de taille."""
     file_extension = os.path.splitext(file.filename)[1].lower()
-    
     if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont autorisés")
 
@@ -129,20 +126,16 @@ async def convert_pdf_to_images(file: UploadFile = File(...)):
     """Convertit un PDF en images avec prétraitement OpenCV (préparation OCR)."""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-    
     try:
         pdf_bytes = await file.read()
         images = convert_from_bytes(pdf_bytes)
-
         image_paths = []
         for i, img in enumerate(images):
             processed_img = preprocess_image(img)
             image_filename = f"{TEMP_IMAGE_DIR}/page_{i+1}_{uuid.uuid4().hex}.png"
-            cv2.imwrite(image_filename, processed_img)  
+            cv2.imwrite(image_filename, processed_img)
             image_paths.append(image_filename)
-
         return {"status": "Conversion réussie", "images": image_paths}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la conversion : {str(e)}")
 
@@ -151,48 +144,54 @@ async def analyze_pdf(file: UploadFile = File(...)):
     """Analyse un PDF, applique un prétraitement et extrait le texte OCR."""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-
     try:
         pdf_bytes = await file.read()
         images = convert_from_bytes(pdf_bytes)
-
         extracted_text = []
         for i, img in enumerate(images):
             processed_img = preprocess_image(img)
             text = pytesseract.image_to_string(processed_img)
             extracted_text.append({"page": i + 1, "text": text})
-
         return {"status": "Analyse réussie", "text_data": extracted_text}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur OCR : {str(e)}")
 
 @router.post("/extract-images")
 async def extract_images_from_pdf(file: UploadFile = File(...)):
-    """Extrait les images intégrées au PDF (logos, signatures, filigranes)."""
+    """
+    Extrait les images intégrées au PDF ainsi que leurs positions (bounding box).
+    Ces informations pourront servir à définir des positions de référence pour logo, signature, etc.
+    """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-
     try:
         pdf_bytes = await file.read()
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
         
-        image_paths = []
+        image_positions = []
         for page_number, page in enumerate(pdf_document):
             images = page.get_images(full=True)
             for img_index, img in enumerate(images):
                 xref = img[0]
                 base_image = pdf_document.extract_image(xref)
                 image_bytes = base_image["image"]
-
+                # Récupération de la bounding box de l'image
+                bbox = page.get_image_bbox(xref)
                 image_filename = f"{EXTRACTED_IMAGES_DIR}/page_{page_number+1}_img_{img_index}.png"
                 with open(image_filename, "wb") as image_file:
                     image_file.write(image_bytes)
-
-                image_paths.append(image_filename)
-
-        return {"status": "Extraction réussie", "images": image_paths}
-
+                image_positions.append({
+                    "page": page_number + 1,
+                    "image_index": img_index,
+                    "image_path": image_filename,
+                    "position": {
+                        "x0": bbox.x0,  # Coordonnée gauche
+                        "y0": bbox.y0,  # Coordonnée haute
+                        "x1": bbox.x1,  # Coordonnée droite
+                        "y1": bbox.y1   # Coordonnée basse
+                    }
+                })
+        return {"status": "Extraction réussie", "images": image_positions}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur extraction images : {str(e)}")
 
@@ -201,42 +200,28 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
     """Compare les images extraites du PDF aux modèles de référence avec ORB/SIFT."""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-
     try:
         pdf_bytes = await file.read()
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
-
         detection_results = []
         reference_images = load_reference_images()
-
-        # Vérifier qu'on a bien chargé des modèles de référence
         if not reference_images:
             raise HTTPException(status_code=500, detail="Aucun modèle d'image de référence trouvé !")
-
         for page_number, page in enumerate(pdf_document):
             images = page.get_images(full=True)
             for img_index, img in enumerate(images):
                 xref = img[0]
                 base_image = pdf_document.extract_image(xref)
-
                 if not base_image:
                     logger.warning(f"Impossible d'extraire l'image {img_index} de la page {page_number + 1}")
                     continue
-
                 image_bytes = base_image["image"]
-
-                # Convertir l'image en format utilisable par OpenCV
                 image_array = np.frombuffer(image_bytes, dtype=np.uint8)
                 extracted_image = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)
-
-                # Vérifier si l'image a bien été décodée
                 if extracted_image is None:
                     logger.warning(f"L'image {img_index} de la page {page_number + 1} n'a pas pu être chargée.")
                     continue
-
                 best_match, best_score = match_images(extracted_image, reference_images, method)
-
-                # Déterminer le seuil de validation en fonction du type d'élément détecté
                 if best_match:
                     if "filigrane" in best_match.lower():
                         threshold = 450
@@ -245,20 +230,16 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
                     elif "signature" in best_match.lower():
                         threshold = 300
                     else:
-                        threshold = CONFIDENCE_THRESHOLD  # Seuil par défaut
-
+                        threshold = CONFIDENCE_THRESHOLD
                     if best_score < threshold:
                         best_match = "Aucune correspondance"
-
                 detection_results.append({
                     "page": page_number + 1,
                     "image_index": img_index,
                     "best_match": best_match,
                     "score": best_score
                 })
-
         return {"status": "Détection terminée", "results": detection_results}
-
     except Exception as e:
         logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
@@ -303,16 +284,12 @@ async def validate_pdf(file: UploadFile = File(...)):
     """Valide le contenu du PDF en fonction des tests définis dans le fichier JSON."""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-
     try:
         pdf_bytes = await file.read()
         tests = load_tests()
         images = convert_from_bytes(pdf_bytes)
         extracted_text = " ".join([pytesseract.image_to_string(preprocess_image(img)) for img in images])
-
         results = []
-
-        # Vérification des textes et journalisation des erreurs
         for category in tests.get("categories", []):
             category_name = category["nom"]
             for test in category.get("tests", []):
@@ -339,56 +316,45 @@ async def validate_pdf(file: UploadFile = File(...)):
                         })
                         if status == "Failed":
                             logger.error(f"Erreur détectée - Catégorie: {category_name} - {sub_category_name}, Condition: {condition['value']}")
-
         save_results(results)
         return {"status": "Validation terminée", "results": results}
-
     except Exception as e:
         logger.error(f"Erreur lors de la validation : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
 
 @router.post("/verify-positions")
 async def verify_positions(file: UploadFile = File(...)):
-    """Vérifie les positions des éléments textuels importants."""
+    """Vérifie les positions des éléments textuels importants (via OCR)."""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-
     try:
         pdf_bytes = await file.read()
         images = convert_from_bytes(pdf_bytes)
-
         position_results = []
-
         for i, img in enumerate(images):
             processed_img = preprocess_image(img)
             elements = extract_text_with_positions(processed_img)
-
             for element in elements:
                 text = element["text"].lower()
                 position = element["position"]
-
-                # Exemple de vérification du logo en haut à gauche (à ajuster selon les besoins)
+                # Exemple de vérification pour un logo détecté dans le texte
                 if "logo" in text:
-                    if position["left"] < 100 and position["top"] < 100:
-                        status = "Passed"
-                    else:
-                        status = "Failed"
-                    
+                    status = "Passed" if (position["left"] < 100 and position["top"] < 100) else "Failed"
                     position_results.append({
                         "page": i + 1,
                         "element": text,
                         "status": status,
                         "position": position,
-                        "expected_position": "En haut à gauche"
+                        "expected_position": "En haut à gauche (left < 100, top < 100)"
                     })
-
-                # Vérification de la signature en bas de la première page
+                # Vérification de la signature sur la première page
                 if i == 0 and "signature" in text:
-                    if position["top"] > img.size[1] * 0.75:
-                        status = "Passed"
+                    # Pour la signature, on vérifie par exemple que le texte se trouve en bas
+                    if hasattr(img, "size"):
+                        page_height = img.size[1]
                     else:
-                        status = "Failed"
-
+                        page_height = 1000  # Valeur par défaut si non disponible
+                    status = "Passed" if (position["top"] > page_height * 0.75) else "Failed"
                     position_results.append({
                         "page": i + 1,
                         "element": text,
@@ -396,8 +362,55 @@ async def verify_positions(file: UploadFile = File(...)):
                         "position": position,
                         "expected_position": "En bas de la première page"
                     })
-
         return {"status": "Vérification terminée", "results": position_results}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions : {str(e)}")
+
+@router.post("/verify-image-positions")
+async def verify_image_positions(file: UploadFile = File(...)):
+    """
+    Vérifie que les images extraites (par exemple, logo et signature) se trouvent aux positions de référence.
+    Ici, on définit par défaut :
+      - Pour un logo (image de petite taille) : x0 < 100 et y0 < 100.
+      - Pour une signature (image de taille plus grande) : y1 > (hauteur de la page - 100).
+    Ces règles sont à adapter selon vos PDF de référence.
+    """
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+    try:
+        pdf_bytes = await file.read()
+        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+        verification_results = []
+        for page_number, page in enumerate(pdf_document):
+            page_rect = page.rect  # Coordonnées de la page
+            images = page.get_images(full=True)
+            for img_index, img in enumerate(images):
+                xref = img[0]
+                bbox = page.get_image_bbox(xref)
+                # Exemple de règle :
+                # Si l'image est petite, on la considère comme un logo
+                if (bbox.x1 - bbox.x0) < 150 and (bbox.y1 - bbox.y0) < 150:
+                    element_type = "logo"
+                    expected = (bbox.x0 < 100 and bbox.y0 < 100)
+                    expected_desc = "En haut à gauche (x0 < 100, y0 < 100)"
+                else:
+                    # Sinon, on la considère comme une signature
+                    element_type = "signature"
+                    expected = (bbox.y1 > (page_rect.height - 100))
+                    expected_desc = "En bas de la page (y1 > page_height - 100)"
+                verification_results.append({
+                    "page": page_number + 1,
+                    "image_index": img_index,
+                    "element": element_type,
+                    "position": {
+                        "x0": bbox.x0,
+                        "y0": bbox.y0,
+                        "x1": bbox.x1,
+                        "y1": bbox.y1
+                    },
+                    "expected_position": expected_desc,
+                    "status": "Passed" if expected else "Failed"
+                })
+        return {"status": "Vérification des positions d'images terminée", "results": verification_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions d'images : {str(e)}")
