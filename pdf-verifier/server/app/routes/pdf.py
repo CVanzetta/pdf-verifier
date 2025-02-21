@@ -240,7 +240,7 @@ def load_tests():
     """Charge les tests depuis le fichier JSON."""
     with open(TESTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
-
+    
 @router.post("/validate")
 async def validate_pdf(file: UploadFile = File(...)):
     """Valide le contenu du PDF en fonction des tests définis dans le fichier JSON."""
@@ -253,22 +253,21 @@ async def validate_pdf(file: UploadFile = File(...)):
         images = convert_from_bytes(pdf_bytes)
         extracted_text = " ".join([pytesseract.image_to_string(preprocess_image(img)) for img in images])
 
-        errors = []
+        results = []
 
         # Vérification des textes
         for category in tests["categories"]:
             for test in category.get("tests", []):
                 for condition in test["conditions"]:
-                    if condition["type"] == "texte_present":
-                        if condition["value"].lower() not in extracted_text.lower():
-                            errors.append({
-                                "type": "Texte manquant",
-                                "expected": condition["value"],
-                                "found": "Non trouvé",
-                                "reference": condition["reference"]
-                            })
+                    status = "Passed" if condition["value"].lower() in extracted_text.lower() else "Failed"
+                    results.append({
+                        "status": status,
+                        "categorie": category["nom"],
+                        "article": test.get("article", "N/A"),
+                        "comments": f'Attendu: "{condition["value"]}" - {"Trouvé" if status == "Passed" else "Non trouvé"}',
+                    })
 
-        return {"status": "Validation terminée", "errors": errors}
+        return {"status": "Validation terminée", "results": results}
 
     except Exception as e:
         return HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
