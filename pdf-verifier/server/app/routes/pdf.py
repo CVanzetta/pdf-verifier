@@ -327,3 +327,4 @@ async def validate_pdf(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Erreur lors de la validation : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
+
