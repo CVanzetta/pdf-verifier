@@ -34,10 +34,10 @@ router = APIRouter()
 UPLOAD_DIR = "uploads"
 TEMP_IMAGE_DIR = "temp_images"
 EXTRACTED_IMAGES_DIR = "extracted_images"
-REFERENCE_MODELS_DIR = "reference_models"  # Contient les images modèles (ex. logo.png, signature.png, etc.)
-ALLOWED_EXTENSIONS = {".pdf"}  # Fichiers PDF uniquement
-MAX_FILE_SIZE_MB = 5  # Taille max en Mo
-CONFIDENCE_THRESHOLD = 10  # Pour d'autres méthodes (détection ORB/SIFT)
+REFERENCE_MODELS_DIR = "reference_models"  # Contient les images modèles (logo.png, signature.png, etc.)
+ALLOWED_EXTENSIONS = {".pdf"}
+MAX_FILE_SIZE_MB = 5
+CONFIDENCE_THRESHOLD = 10
 
 # Création des dossiers de stockage
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -55,8 +55,7 @@ def preprocess_image(image):
 def extract_text_with_positions(image):
     """
     Extrait le texte et ses coordonnées via OCR.
-    Cette fonction est destinée à la vérification des positions textuelles.
-    (Cette route n'est pas utilisée pour la vérification des images.)
+    Destiné à la vérification des positions textuelles (non utilisé pour les images).
     """
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
     elements = []
@@ -84,7 +83,10 @@ def load_reference_images():
     return models
 
 def match_images(extracted_image, reference_images, method="ORB"):
-    """Détection par ORB/SIFT pour comparer l'image extraite aux modèles."""
+    """
+    Compare l'image extraite aux modèles de référence en utilisant ORB ou SIFT
+    et retourne le meilleur modèle ainsi que son score (nombre de correspondances).
+    """
     if method not in ["ORB", "SIFT"]:
         raise ValueError("Méthode non valide. Utiliser 'ORB' ou 'SIFT'.")
     detector = cv2.ORB_create() if method == "ORB" else cv2.SIFT_create()
@@ -94,7 +96,7 @@ def match_images(extracted_image, reference_images, method="ORB"):
     for model_name, model_img in reference_images.items():
         kp2, des2 = detector.detectAndCompute(model_img, None)
         if des1 is not None and des2 is not None:
-            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True) if method=="ORB" else cv2.BFMatcher()
             matches = bf.match(des1, des2)
             score = len(matches)
             if score > best_score:
@@ -102,37 +104,40 @@ def match_images(extracted_image, reference_images, method="ORB"):
                 best_match = model_name
     return best_match, best_score
 
-def detect_element_position(image, template, threshold=0.8):
+def compute_homography_bbox(extracted_image, template, method="ORB", ransac_thresh=5.0, ratio_thresh=0.75):
     """
-    Utilise le template matching pour détecter la position d'un élément (template)
-    dans l'image. Si le template est plus grand que l'image source, il est redimensionné.
-    Retourne la bounding box sous forme de dict et le score.
+    Calcule l'homographie entre l'image extraite et le template pour obtenir la bounding box.
+    Retourne la bbox sous forme de dict si suffisante, sinon None.
     """
-    # Assurez-vous que l'image et le template sont en niveaux de gris
-    if len(image.shape) == 3:
-        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    else:
-        image_gray = image
-    if len(template.shape) == 3:
-        template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-    else:
-        template_gray = template
-
-    # Redimensionnement du template si nécessaire
-    if image_gray.shape[0] < template_gray.shape[0] or image_gray.shape[1] < template_gray.shape[1]:
-        scale = min(image_gray.shape[0] / template_gray.shape[0],
-                    image_gray.shape[1] / template_gray.shape[1]) * 0.9
-        new_size = (int(template_gray.shape[1] * scale), int(template_gray.shape[0] * scale))
-        template_gray = cv2.resize(template_gray, new_size)
-
-    res = cv2.matchTemplate(image_gray, template_gray, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-    if max_val < threshold:
-        return None, max_val
-    top_left = max_loc
-    h, w = template_gray.shape[:2]
-    bbox = {"left": top_left[0], "top": top_left[1], "width": w, "height": h}
-    return bbox, max_val
+    # Choix du détecteur
+    detector = cv2.ORB_create() if method=="ORB" else cv2.SIFT_create()
+    kp1, des1 = detector.detectAndCompute(extracted_image, None)
+    kp2, des2 = detector.detectAndCompute(template, None)
+    if des1 is None or des2 is None:
+        return None
+    # Utilisation de BFMatcher avec k=2 pour appliquer le ratio test
+    norm = cv2.NORM_HAMMING if method=="ORB" else cv2.NORM_L2
+    bf = cv2.BFMatcher(norm)
+    matches = bf.knnMatch(des1, des2, k=2)
+    good = []
+    for m, n in matches:
+        if m.distance < ratio_thresh * n.distance:
+            good.append(m)
+    if len(good) >= 4:
+        pts_src = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+        pts_dst = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+        H, mask = cv2.findHomography(pts_dst, pts_src, cv2.RANSAC, ransac_thresh)
+        if H is not None:
+            h, w = template.shape[:2]
+            pts = np.float32([[0,0], [0,h-1], [w-1,h-1], [w-1,0]]).reshape(-1,1,2)
+            dst = cv2.perspectiveTransform(pts, H)
+            min_x = np.min(dst[:,0,0])
+            min_y = np.min(dst[:,0,1])
+            max_x = np.max(dst[:,0,0])
+            max_y = np.max(dst[:,0,1])
+            bbox = {"left": float(min_x), "top": float(min_y), "width": float(max_x - min_x), "height": float(max_y - min_y)}
+            return bbox
+    return None
 
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -152,7 +157,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @router.post("/convert-images")
 async def convert_pdf_to_images(file: UploadFile = File(...)):
-    """Convertit le PDF en images (prétraitement pour l'OCR et la détection)."""
+    """Convertit le PDF en images pour traitement (OCR et détection)."""
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
     try:
@@ -188,8 +193,8 @@ async def analyze_pdf(file: UploadFile = File(...)):
 @router.post("/extract-images")
 async def extract_images_from_pdf(file: UploadFile = File(...)):
     """
-    Extrait les images intégrées dans le PDF et, si possible, leur bounding box 
-    via les métadonnées PDF. (Cette méthode n'est pas toujours fiable.)
+    Extrait les images intégrées dans le PDF et, si possible, leur bounding box via les métadonnées.
+    (Méthode peu fiable, non utilisée pour la vérification par template matching.)
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
@@ -230,9 +235,9 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
 @router.post("/detect-elements")
 async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "ORB"):
     """
-    Compare les images extraites du PDF aux modèles de référence (via ORB/SIFT) 
-    et retourne l'élément détecté avec son score. 
-    (Cette route ne fournit pas la position de l'élément.)
+    Compare les images extraites du PDF aux modèles de référence via ORB/SIFT.
+    En plus du score, cette version calcule l'homographie pour déterminer la position
+    (bounding box) de l'élément détecté. Si le score est insuffisant, aucun élément n'est retourné.
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
@@ -249,15 +254,17 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
                 xref = img[0]
                 base_image = pdf_document.extract_image(xref)
                 if not base_image:
-                    logger.warning(f"Impossible d'extraire l'image {img_index} de la page {page_number + 1}")
+                    logger.warning(f"Impossible d'extraire l'image {img_index} de la page {page_number+1}")
                     continue
                 image_bytes = base_image["image"]
                 image_array = np.frombuffer(image_bytes, dtype=np.uint8)
                 extracted_image = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)
                 if extracted_image is None:
-                    logger.warning(f"L'image {img_index} de la page {page_number + 1} n'a pas pu être chargée.")
+                    logger.warning(f"L'image {img_index} de la page {page_number+1} n'a pas pu être chargée.")
                     continue
                 best_match, best_score = match_images(extracted_image, reference_images, method)
+                bbox = None
+                # Seule la correspondance est considérée si le score dépasse un seuil défini
                 if best_match:
                     if "filigrane" in best_match.lower():
                         threshold = 450
@@ -269,27 +276,28 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
                         threshold = CONFIDENCE_THRESHOLD
                     if best_score < threshold:
                         best_match = "Aucune correspondance"
+                    else:
+                        # Calcul de l'homographie pour obtenir la position
+                        template = reference_images[best_match]
+                        bbox = compute_homography_bbox(extracted_image, template, method)
                 detection_results.append({
                     "page": page_number + 1,
                     "image_index": img_index,
                     "best_match": best_match,
-                    "score": best_score
+                    "score": best_score,
+                    "position": bbox
                 })
         return {"status": "Détection terminée", "results": detection_results}
     except Exception as e:
         logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
 
-# ===============================================================
-# Endpoint pour vérifier la position du texte (via OCR)
-# Ce endpoint (/pdf/verify-positions) est destiné à la vérification des positions textuelles.
-# Il est commenté pour l'instant car il n'est pas utilisé pour les images.
-# ===============================================================
+# Endpoint pour vérifier les positions textuelles (non utilisé pour les images)
 @router.post("/verify-positions")
 async def verify_text_positions(file: UploadFile = File(...)):
     """
-    Vérifie les positions des éléments textuels importants (via OCR).
-    (Ce endpoint est réservé à la vérification du texte et n'est pas utilisé pour la vérification des images.)
+    Vérifie les positions des éléments textuels (via OCR).
+    Ce endpoint est destiné à la vérification du texte et n'est pas utilisé pour les images.
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
@@ -303,23 +311,20 @@ async def verify_text_positions(file: UploadFile = File(...)):
             for element in elements:
                 text = element["text"].lower()
                 position = element["position"]
-                # Exemple de règle pour un logo détecté dans le texte
                 if "logo" in text:
                     status = "Passed" if (position["left"] < 100 and position["top"] < 100) else "Failed"
                     position_results.append({
-                        "page": i + 1,
+                        "page": i+1,
                         "element": text,
                         "status": status,
                         "position": position,
                         "expected_position": "En haut à gauche (left < 100, top < 100)"
                     })
-                # Vérification de la signature sur la première page
                 if i == 0 and "signature" in text:
-                    # Utilisation d'une valeur par défaut pour la hauteur de la page
                     page_height = 1000  
                     status = "Passed" if (position["top"] > page_height * 0.75) else "Failed"
                     position_results.append({
-                        "page": i + 1,
+                        "page": i+1,
                         "element": text,
                         "status": status,
                         "position": position,
@@ -328,44 +333,3 @@ async def verify_text_positions(file: UploadFile = File(...)):
         return {"status": "Vérification terminée", "results": position_results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions : {str(e)}")
-
-# ===============================================================
-# Endpoint pour vérifier la position des éléments (images) via OpenCV template matching
-# Ce endpoint a été renommé pour être plus simple (/pdf/verify-element-positions)
-# Il corrige l'erreur de taille en redimensionnant le template si nécessaire.
-# Une fois la position connue, vous pourrez l'utiliser comme référence pour d'autres PDF.
-# ===============================================================
-@router.post("/verify-element-positions")
-async def verify_element_positions(file: UploadFile = File(...)):
-    """
-    Convertit le PDF en images et utilise le template matching (OpenCV)
-    pour détecter et localiser des éléments (logo, signature, etc.) sur chaque page.
-    Pour chaque modèle de référence (dans REFERENCE_MODELS_DIR), la fonction
-    retourne la bounding box si le score dépasse le seuil.
-    """
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
-    try:
-        pdf_bytes = await file.read()
-        images = convert_from_bytes(pdf_bytes)
-        # Charger les modèles de référence
-        reference_templates = {}
-        for model_name in os.listdir(REFERENCE_MODELS_DIR):
-            model_path = os.path.join(REFERENCE_MODELS_DIR, model_name)
-            template_img = cv2.imread(model_path, cv2.IMREAD_GRAYSCALE)
-            reference_templates[model_name] = template_img
-        detection_results = []
-        for page_index, pil_img in enumerate(images):
-            # Convertir l'image PIL en array OpenCV (BGR)
-            cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-            for ref_name, template in reference_templates.items():
-                bbox, score = detect_element_position(cv_img, template, threshold=0.8)
-                detection_results.append({
-                    "page": page_index + 1,
-                    "element": ref_name,
-                    "position": bbox,
-                    "score": score
-                })
-        return {"status": "Vérification terminée", "results": detection_results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions avec OpenCV : {str(e)}")
