@@ -1,123 +1,158 @@
 <template>
     <Card header="Outil de vérification PDF" class="mb-5">
-        <template #content>
+      <template #content>
         <FileUpload
-            name="pdf[]"
-            accept="application/pdf"
-            :maxFileSize="10 * 1024 * 1024"
-            custom-upload
-            :multiple="false"
-            @select="onFileSelect"
-            @remove="onRemoveFile"
+          name="pdf[]"
+          accept="application/pdf"
+          :maxFileSize="10 * 1024 * 1024"
+          custom-upload
+          :multiple="false"
+          @select="onFileSelect"
+          @remove="onRemoveFile"
         >
-        <!-- Header Slot -->
-        <template #header="{ chooseCallback, clearCallback, files }">
+          <!-- Header Slot -->
+          <template #header="{ chooseCallback, clearCallback, files }">
             <div class="flex flex-wrap justify-between items-center flex-1 gap-4">
-            <div class="flex gap-2">
+              <div class="flex gap-2">
                 <Button
-                @click="chooseCallback"
-                icon="pi pi-folder-open"
-                rounded
-                outlined
-                severity="secondary"
+                  @click="chooseCallback"
+                  icon="pi pi-folder-open"
+                  rounded
+                  outlined
+                  severity="secondary"
                 ></Button>
                 <Button
-                @click="clearCallback"
-                icon="pi pi-trash"
-                rounded
-                outlined
-                severity="danger"
-                :disabled="!files || files.length === 0"
+                  @click="clearCallback"
+                  icon="pi pi-trash"
+                  rounded
+                  outlined
+                  severity="danger"
+                  :disabled="!files || files.length === 0"
                 ></Button>
+              </div>
+              <span v-if="pdfFile">Fichier sélectionné : {{ pdfFile.name }}</span>
             </div>
-            <span v-if="pdfFile">Fichier sélectionné : {{ pdfFile.name }}</span>
-            </div>
-        </template>
-
-        <!-- Content Slot -->
-        <template #content="{ files }">
+          </template>
+  
+          <!-- Content Slot -->
+          <template #content="{ files }">
             <div v-if="files.length > 0" class="mt-4">
-            <ul>
+              <ul>
                 <li
-                v-for="file in files"
-                :key="file.name"
-                class="flex justify-between items-center"
+                  v-for="file in files"
+                  :key="file.name"
+                  class="flex justify-between items-center"
                 >
-                <span>{{ file.name }}</span>
-                <Button
+                  <span>{{ file.name }}</span>
+                  <Button
                     icon="pi pi-times"
                     class="p-button-text p-button-danger"
                     @click="$emit('remove', file)"
-                ></Button>
+                  ></Button>
                 </li>
-            </ul>
+              </ul>
             </div>
-        </template>
-
-        <!-- Empty Slot -->
-        <template #empty>
-            <div class="flex flex-col items-center justify-center text-center py-10">
-            <div class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32">
-                <i class="pi pi-cloud-upload text-gray-500" style="font-size:4rem;"></i>
-            </div>
-            <p class="mt-6 mb-0 text-lg font-semibold">
+          </template>
+  
+          <!-- Empty Slot -->
+          <template #empty>
+            <div
+              class="flex flex-col items-center justify-center text-center py-10"
+            >
+              <div
+                class="flex items-center justify-center rounded-full border-4 border-gray-300 h-32 w-32"
+              >
+                <i
+                  class="pi pi-cloud-upload text-gray-500"
+                  style="font-size: 4rem"
+                ></i>
+              </div>
+              <p class="mt-6 mb-0 text-lg font-semibold">
                 Glissez-déposez les fichiers ici
-            </p>
+              </p>
             </div>
-        </template>
+          </template>
         </FileUpload>
-
+  
         <Button
-        label="Lancer les tests sélectionnés"
-        icon="pi pi-play"
-        class="mt-3"
-        :loading="loading"
-        :disabled="loading || !pdfFile || !selectedTests || selectedTests.length === 0"
-        @click="$emit('analyzePdf')"
+          label="Lancer les tests sélectionnés"
+          icon="pi pi-play"
+          class="mt-3"
+          :loading="loading"
+          :disabled="
+            loading || !pdfFile || !selectedTests || selectedTests.length === 0
+          "
+          @click="analyzePdf"
         />
-    </template>
+      </template>
     </Card>
-</template>
-
-    <script setup>
-import { computed } from 'vue';
-import FileUpload from 'primevue/fileupload';
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-
+  
+    <!-- Résultats des tests -->
+    <ResultTable :results="results" />
+  </template>
+  
+  <script setup>
+  import { ref } from 'vue';
+  import FileUpload from 'primevue/fileupload';
+  import Button from 'primevue/button';
+  import Card from 'primevue/card';
+  import ResultTable from './ResultTable.vue'; // 📥 Import du tableau des résultats
+  
   // Props
-const props = defineProps({
+  const props = defineProps({
     pdfFile: {
-        type: Object,
-        default: null
+      type: Object,
+      default: null,
     },
     loading: {
-        type: Boolean,
-        default: false
+      type: Boolean,
+      default: false,
     },
     selectedTests: {
-        type: Array,
-        default: () => []
-    }
-});
-
+      type: Array,
+      default: () => [],
+    },
+  });
+  
   // Emits
-const emit = defineEmits(['update:pdfFile', 'analyzePdf']);
-
-  // Methods
-    function onFileSelect(event) {
+  const emit = defineEmits(['update:pdfFile', 'analyzePdf']);
+  
+  // Résultats des tests
+  const results = ref([]);
+  
+  // Méthodes
+  function onFileSelect(event) {
     if (event.files.length > 0) {
-        const file = event.files[event.files.length - 1];
-        emit('update:pdfFile', file);
-      // Restrict to only one file
-        event.files.splice(0, event.files.length, file);
-        console.log('Fichier sélectionné:', file?.name);
+      const file = event.files[event.files.length - 1];
+      emit('update:pdfFile', file);
+      event.files.splice(0, event.files.length, file);
+      console.log('Fichier sélectionné:', file?.name);
     }
-}
-
-    function onRemoveFile() {
+  }
+  
+  function onRemoveFile() {
     emit('update:pdfFile', null);
     console.log('Fichier retiré');
-}
-
-</script>
+  }
+  
+  // Lancer les tests
+  async function analyzePdf() {
+    if (!props.pdfFile) return;
+    const formData = new FormData();
+    formData.append('file', props.pdfFile);
+  
+    try {
+      const response = await fetch('http://127.0.0.1:8000/validate', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      const result = await response.json();
+      results.value = result.errors || []; // On récupère les erreurs
+      console.log('Résultats des tests:', results.value);
+    } catch (error) {
+      console.error('Erreur lors de la validation du PDF:', error);
+    }
+  }
+  </script>
+  
