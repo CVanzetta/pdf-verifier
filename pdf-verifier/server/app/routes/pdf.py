@@ -240,7 +240,7 @@ def load_tests():
     """Charge les tests depuis le fichier JSON."""
     with open(TESTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
-    
+
 @router.post("/validate")
 async def validate_pdf(file: UploadFile = File(...)):
     """Valide le contenu du PDF en fonction des tests définis dans le fichier JSON."""
@@ -256,19 +256,57 @@ async def validate_pdf(file: UploadFile = File(...)):
         results = []
 
         # Vérification des textes
-        for category in tests["categories"]:
+        for category in tests.get("categories", []):
+            category_name = category["nom"]
+
+            # Vérification des tests simples
             for test in category.get("tests", []):
                 for condition in test["conditions"]:
-                    status = "Passed" if condition["value"].lower() in extracted_text.lower() else "Failed"
+                    status, comments = validate_condition(condition, extracted_text)
                     results.append({
                         "status": status,
-                        "categorie": category["nom"],
+                        "categorie": category_name,
                         "article": test.get("article", "N/A"),
-                        "comments": f'Attendu: "{condition["value"]}" - {"Trouvé" if status == "Passed" else "Non trouvé"}',
+                        "comments": comments
                     })
+
+            # Vérification des sous-catégories
+            for sub_category in category.get("sousCategories", []):
+                sub_category_name = sub_category["nom"]
+                for test in sub_category.get("tests", []):
+                    for condition in test["conditions"]:
+                        status, comments = validate_condition(condition, extracted_text)
+                        results.append({
+                            "status": status,
+                            "categorie": f"{category_name} - {sub_category_name}",
+                            "article": test.get("article", "N/A"),
+                            "comments": comments
+                        })
 
         return {"status": "Validation terminée", "results": results}
 
     except Exception as e:
         return HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
 
+def validate_condition(condition, extracted_text):
+    """Valide une condition de test spécifique en fonction du type."""
+    if condition["type"] == "texte_present":
+        if condition["value"].lower() in extracted_text.lower():
+            return "Passed", f'Attendu: "{condition["value"]}" - Trouvé'
+        else:
+            return "Failed", f'Attendu: "{condition["value"]}" - Non trouvé'
+
+    elif condition["type"] == "texte_multi_colonnes":
+        missing_values = []
+        for value in condition["values"]:
+            if value.lower() not in extracted_text.lower():
+                missing_values.append(value)
+        
+        if not missing_values:
+            return "Passed", "Tous les textes attendus ont été trouvés"
+        else:
+            missing_str = ", ".join(missing_values)
+            return "Failed", f'Textes manquants: {missing_str}'
+
+    else:
+        return "Failed", f"Type de condition inconnu : {condition['type']}"
