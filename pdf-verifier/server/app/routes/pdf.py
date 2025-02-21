@@ -1,4 +1,5 @@
 import json
+import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pdf2image import convert_from_bytes
 import pytesseract
@@ -9,6 +10,23 @@ import cv2  # OpenCV pour le prétraitement et la détection
 import numpy as np
 import fitz  # PyMuPDF pour extraire les images
 import logging
+
+# Dossiers supplémentaires
+TEMP_RESULTS_DIR = "temp_results"
+LOG_DIR = "logs"
+
+# Création des nouveaux dossiers
+os.makedirs(TEMP_RESULTS_DIR, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Configuration du logger
+log_file_path = os.path.join(LOG_DIR, "analysis.log")
+logging.basicConfig(
+    filename=log_file_path,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -21,15 +39,11 @@ ALLOWED_EXTENSIONS = {".pdf"}  # Types de fichiers autorisés
 MAX_FILE_SIZE_MB = 5  # Taille max en Mo
 CONFIDENCE_THRESHOLD = 10  # Score minimum pour une correspondance valide
 
-# Création des dossiers
+# Création des dossiers de stockage
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(TEMP_IMAGE_DIR, exist_ok=True)
 os.makedirs(EXTRACTED_IMAGES_DIR, exist_ok=True)
 os.makedirs(REFERENCE_MODELS_DIR, exist_ok=True)
-
-# Logger
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def preprocess_image(image):
     """Prétraitement OpenCV : conversion en niveaux de gris et binarisation."""
@@ -84,9 +98,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Le fichier dépasse la limite de {MAX_FILE_SIZE_MB} Mo")
 
     await file.seek(0)
-
     file_path = os.path.join(UPLOAD_DIR, file.filename)
-
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
@@ -134,7 +146,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
         return {"status": "Analyse réussie", "text_data": extracted_text}
 
     except Exception as e:
-        return HTTPException(status_code=500, detail=f"Erreur OCR : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur OCR : {str(e)}")
 
 @router.post("/extract-images")
 async def extract_images_from_pdf(file: UploadFile = File(...)):
@@ -163,7 +175,7 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
         return {"status": "Extraction réussie", "images": image_paths}
 
     except Exception as e:
-        return HTTPException(status_code=500, detail=f"Erreur extraction images : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur extraction images : {str(e)}")
 
 @router.post("/detect-elements")
 async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "ORB"):
@@ -205,8 +217,7 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
 
                 best_match, best_score = match_images(extracted_image, reference_images, method)
 
-                # Déterminer le seuil de validation en fonction du type d'élément détecté 450-500 Seuil élevé et 300-450 Seuil moyen moins de 300 Seuil bas (rique de faux positifs)
-                # J'ai l'impression que le filigranne a un risque de faux positif a 353
+                # Déterminer le seuil de validation en fonction du type d'élément détecté
                 if best_match:
                     if "filigrane" in best_match.lower():
                         threshold = 450
@@ -217,7 +228,6 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
                     else:
                         threshold = CONFIDENCE_THRESHOLD  # Seuil par défaut
 
-                    # Vérification du score par rapport au seuil défini
                     if best_score < threshold:
                         best_match = "Aucune correspondance"
 
@@ -232,7 +242,7 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
 
     except Exception as e:
         logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
-        return HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
 
 TESTS_FILE = "tests.json"
 
@@ -240,6 +250,34 @@ def load_tests():
     """Charge les tests depuis le fichier JSON."""
     with open(TESTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
+
+def validate_condition(condition, extracted_text):
+    """Valide une condition de test spécifique en fonction du type."""
+    if condition["type"] == "texte_present":
+        if condition["value"].lower() in extracted_text.lower():
+            return "Passed", f'Attendu: "{condition["value"]}" - Trouvé'
+        else:
+            return "Failed", f'Attendu: "{condition["value"]}" - Non trouvé'
+    elif condition["type"] == "texte_multi_colonnes":
+        missing_values = []
+        for value in condition["values"]:
+            if value.lower() not in extracted_text.lower():
+                missing_values.append(value)
+        if not missing_values:
+            return "Passed", "Tous les textes attendus ont été trouvés"
+        else:
+            missing_str = ", ".join(missing_values)
+            return "Failed", f'Textes manquants: {missing_str}'
+    else:
+        return "Failed", f"Type de condition inconnu : {condition['type']}"
+
+def save_results(results):
+    """Sauvegarde temporairement les résultats d'analyse dans un fichier JSON."""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    result_file = os.path.join(TEMP_RESULTS_DIR, f"result_{timestamp}.json")
+    with open(result_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=4)
+    logger.info(f"Résultats enregistrés temporairement : {result_file}")
 
 @router.post("/validate")
 async def validate_pdf(file: UploadFile = File(...)):
@@ -255,11 +293,9 @@ async def validate_pdf(file: UploadFile = File(...)):
 
         results = []
 
-        # Vérification des textes
+        # Vérification des textes et journalisation des erreurs
         for category in tests.get("categories", []):
             category_name = category["nom"]
-
-            # Vérification des tests simples
             for test in category.get("tests", []):
                 for condition in test["conditions"]:
                     status, comments = validate_condition(condition, extracted_text)
@@ -269,8 +305,8 @@ async def validate_pdf(file: UploadFile = File(...)):
                         "article": test.get("article", "N/A"),
                         "comments": comments
                     })
-
-            # Vérification des sous-catégories
+                    if status == "Failed":
+                        logger.error(f"Erreur détectée - Catégorie: {category_name}, Condition: {condition['value']}")
             for sub_category in category.get("sousCategories", []):
                 sub_category_name = sub_category["nom"]
                 for test in sub_category.get("tests", []):
@@ -282,31 +318,12 @@ async def validate_pdf(file: UploadFile = File(...)):
                             "article": test.get("article", "N/A"),
                             "comments": comments
                         })
+                        if status == "Failed":
+                            logger.error(f"Erreur détectée - Catégorie: {category_name} - {sub_category_name}, Condition: {condition['value']}")
 
+        save_results(results)
         return {"status": "Validation terminée", "results": results}
 
     except Exception as e:
-        return HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
-
-def validate_condition(condition, extracted_text):
-    """Valide une condition de test spécifique en fonction du type."""
-    if condition["type"] == "texte_present":
-        if condition["value"].lower() in extracted_text.lower():
-            return "Passed", f'Attendu: "{condition["value"]}" - Trouvé'
-        else:
-            return "Failed", f'Attendu: "{condition["value"]}" - Non trouvé'
-
-    elif condition["type"] == "texte_multi_colonnes":
-        missing_values = []
-        for value in condition["values"]:
-            if value.lower() not in extracted_text.lower():
-                missing_values.append(value)
-        
-        if not missing_values:
-            return "Passed", "Tous les textes attendus ont été trouvés"
-        else:
-            missing_str = ", ".join(missing_values)
-            return "Failed", f'Textes manquants: {missing_str}'
-
-    else:
-        return "Failed", f"Type de condition inconnu : {condition['type']}"
+        logger.error(f"Erreur lors de la validation : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
