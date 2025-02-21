@@ -6,9 +6,9 @@ import pytesseract
 import shutil
 import os
 import uuid
-import cv2  # OpenCV pour le prétraitement et la détection
+import cv2  # OpenCV pour le prétraitement, la détection et le template matching
 import numpy as np
-import fitz  # PyMuPDF pour extraire les images et leurs positions
+import fitz  # PyMuPDF (encore utilisé pour d’autres endpoints si besoin)
 import logging
 
 # Dossiers supplémentaires
@@ -34,16 +34,10 @@ router = APIRouter()
 UPLOAD_DIR = "uploads"
 TEMP_IMAGE_DIR = "temp_images"
 EXTRACTED_IMAGES_DIR = "extracted_images"
-REFERENCE_MODELS_DIR = "reference_models"
+REFERENCE_MODELS_DIR = "reference_models"  # Contiendra les templates (ex. logo.png, signature.png, etc.)
 ALLOWED_EXTENSIONS = {".pdf"}  # Types de fichiers autorisés
 MAX_FILE_SIZE_MB = 5  # Taille max en Mo
-CONFIDENCE_THRESHOLD = 10  # Score minimum pour une correspondance valide
-
-# Création des dossiers de stockage
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(TEMP_IMAGE_DIR, exist_ok=True)
-os.makedirs(EXTRACTED_IMAGES_DIR, exist_ok=True)
-os.makedirs(REFERENCE_MODELS_DIR, exist_ok=True)
+CONFIDENCE_THRESHOLD = 10  # Pour d'autres méthodes (détection ORB/SIFT)
 
 def preprocess_image(image):
     """Prétraitement OpenCV : conversion en niveaux de gris et binarisation."""
@@ -83,13 +77,10 @@ def match_images(extracted_image, reference_images, method="ORB"):
     """Compare une image extraite avec les modèles et retourne la meilleure correspondance."""
     if method not in ["ORB", "SIFT"]:
         raise ValueError("Méthode non valide. Utiliser 'ORB' ou 'SIFT'.")
-
     detector = cv2.ORB_create() if method == "ORB" else cv2.SIFT_create()
     kp1, des1 = detector.detectAndCompute(extracted_image, None)
-
     best_match = None
     best_score = 0
-
     for model_name, model_img in reference_images.items():
         kp2, des2 = detector.detectAndCompute(model_img, None)
         if des1 is not None and des2 is not None:
@@ -99,8 +90,31 @@ def match_images(extracted_image, reference_images, method="ORB"):
             if score > best_score:
                 best_score = score
                 best_match = model_name
-
     return best_match, best_score
+
+def detect_element_position(image, template, threshold=0.8):
+    """
+    Utilise le template matching pour détecter la position d'un élément (template)
+    dans une image. Retourne une bounding box (dict) si le score est suffisant, sinon None.
+    """
+    # Assurez-vous que les deux images sont en niveaux de gris
+    if len(image.shape) == 3:
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        image_gray = image
+    if len(template.shape) == 3:
+        template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    else:
+        template_gray = template
+
+    res = cv2.matchTemplate(image_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+    if max_val < threshold:
+        return None, max_val
+    top_left = max_loc
+    h, w = template_gray.shape[:2]
+    bbox = {"left": top_left[0], "top": top_left[1], "width": w, "height": h}
+    return bbox, max_val
 
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -108,16 +122,13 @@ async def upload_pdf(file: UploadFile = File(...)):
     file_extension = os.path.splitext(file.filename)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont autorisés")
-
     file_content = await file.read()
     if len(file_content) > MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"Le fichier dépasse la limite de {MAX_FILE_SIZE_MB} Mo")
-
     await file.seek(0)
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
     logger.info(f"Fichier reçu : {file.filename}")
     return {"filename": file.filename, "message": "PDF bien reçu"}
 
@@ -159,15 +170,14 @@ async def analyze_pdf(file: UploadFile = File(...)):
 @router.post("/extract-images")
 async def extract_images_from_pdf(file: UploadFile = File(...)):
     """
-    Extrait les images intégrées au PDF ainsi que leurs positions (bounding box).
-    Ces informations pourront servir à définir des positions de référence pour logo, signature, etc.
+    Extrait les images intégrées au PDF ainsi que, si possible, leurs positions (bounding box)
+    issues des métadonnées PDF. Si aucune position n'est trouvée, la valeur sera None.
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
     try:
         pdf_bytes = await file.read()
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
-        
         image_positions = []
         for page_number, page in enumerate(pdf_document):
             images = page.get_images(full=True)
@@ -175,7 +185,6 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
                 xref = img[0]
                 base_image = pdf_document.extract_image(xref)
                 image_bytes = base_image["image"]
-                # Tentative de récupération de la bounding box
                 try:
                     bbox = page.get_image_bbox(xref)
                     position = {
@@ -249,11 +258,9 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
         logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
 
-TESTS_FILE = "tests.json"
-
 def load_tests():
     """Charge les tests depuis le fichier JSON."""
-    with open(TESTS_FILE, "r", encoding="utf-8") as f:
+    with open("tests.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 def validate_condition(condition, extracted_text):
@@ -357,7 +364,7 @@ async def verify_positions(file: UploadFile = File(...)):
                     if hasattr(img, "size"):
                         page_height = img.size[1]
                     else:
-                        page_height = 1000  # Valeur par défaut si non disponible
+                        page_height = 1000  # Valeur par défaut
                     status = "Passed" if (position["top"] > page_height * 0.75) else "Failed"
                     position_results.append({
                         "page": i + 1,
@@ -391,14 +398,11 @@ async def verify_image_positions(file: UploadFile = File(...)):
             for img_index, img in enumerate(images):
                 xref = img[0]
                 bbox = page.get_image_bbox(xref)
-                # Exemple de règle :
-                # Si l'image est petite, on la considère comme un logo
                 if (bbox.x1 - bbox.x0) < 150 and (bbox.y1 - bbox.y0) < 150:
                     element_type = "logo"
                     expected = (bbox.x0 < 100 and bbox.y0 < 100)
                     expected_desc = "En haut à gauche (x0 < 100, y0 < 100)"
                 else:
-                    # Sinon, on la considère comme une signature
                     element_type = "signature"
                     expected = (bbox.y1 > (page_rect.height - 100))
                     expected_desc = "En bas de la page (y1 > page_height - 100)"
@@ -418,3 +422,38 @@ async def verify_image_positions(file: UploadFile = File(...)):
         return {"status": "Vérification des positions d'images terminée", "results": verification_results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions d'images : {str(e)}")
+
+@router.post("/verify-element-positions-opencv")
+async def verify_element_positions_opencv(file: UploadFile = File(...)):
+    """
+    Utilise la conversion PDF -> images puis le template matching OpenCV pour détecter
+    et localiser des éléments (par exemple, logo, signature) sur chaque page.
+    Pour chaque élément de référence (chargé depuis REFERENCE_MODELS_DIR),
+    la fonction détecte la position dans l'image si le score dépasse le seuil.
+    """
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+    try:
+        pdf_bytes = await file.read()
+        images = convert_from_bytes(pdf_bytes)
+        # Charger les modèles de référence
+        reference_templates = {}
+        for model_name in os.listdir(REFERENCE_MODELS_DIR):
+            model_path = os.path.join(REFERENCE_MODELS_DIR, model_name)
+            template_img = cv2.imread(model_path, cv2.IMREAD_GRAYSCALE)
+            reference_templates[model_name] = template_img
+        detection_results = []
+        for page_index, pil_img in enumerate(images):
+            # Convertir l'image PIL en array OpenCV (BGR)
+            cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            for ref_name, template in reference_templates.items():
+                bbox, score = detect_element_position(cv_img, template, threshold=0.8)
+                detection_results.append({
+                    "page": page_index + 1,
+                    "element": ref_name,
+                    "position": bbox,
+                    "score": score
+                })
+        return {"status": "Vérification terminée", "results": detection_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions avec OpenCV : {str(e)}")
