@@ -34,7 +34,7 @@ router = APIRouter()
 UPLOAD_DIR = "uploads"
 TEMP_IMAGE_DIR = "temp_images"
 EXTRACTED_IMAGES_DIR = "extracted_images"
-REFERENCE_MODELS_DIR = "reference_models"  # Contient les images modèles (logo.png, signature.png, etc.)
+REFERENCE_MODELS_DIR = "reference_models"  # Contient les images modèles (ex. logo.png, signature.png, etc.)
 ALLOWED_EXTENSIONS = {".pdf"}
 MAX_FILE_SIZE_MB = 5
 CONFIDENCE_THRESHOLD = 10
@@ -44,6 +44,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(TEMP_IMAGE_DIR, exist_ok=True)
 os.makedirs(EXTRACTED_IMAGES_DIR, exist_ok=True)
 os.makedirs(REFERENCE_MODELS_DIR, exist_ok=True)
+
+# Définition des positions de référence pour chaque élément
+REFERENCE_BBOXES = {
+    "signature.png": {"left": 0, "top": 0, "width": 343, "height": 171},
+    "filigrane_specimen.png": {"left": 0, "top": 0, "width": 1216, "height": 1723},
+    "logo.png": {"left": 0, "top": 0, "width": 1671, "height": 247},
+}
 
 def preprocess_image(image):
     """Conversion en niveaux de gris et binarisation pour OpenCV."""
@@ -55,7 +62,7 @@ def preprocess_image(image):
 def extract_text_with_positions(image):
     """
     Extrait le texte et ses coordonnées via OCR.
-    Destiné à la vérification des positions textuelles (non utilisé pour les images).
+    Destiné à la vérification des positions textuelles (non utilisé pour la détection d'images).
     """
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
     elements = []
@@ -84,8 +91,8 @@ def load_reference_images():
 
 def match_images(extracted_image, reference_images, method="ORB"):
     """
-    Compare l'image extraite aux modèles de référence en utilisant ORB ou SIFT
-    et retourne le meilleur modèle ainsi que son score (nombre de correspondances).
+    Compare l'image extraite aux modèles de référence via ORB/SIFT et retourne
+    le meilleur modèle ainsi que le score (nombre de correspondances).
     """
     if method not in ["ORB", "SIFT"]:
         raise ValueError("Méthode non valide. Utiliser 'ORB' ou 'SIFT'.")
@@ -93,7 +100,7 @@ def match_images(extracted_image, reference_images, method="ORB"):
     kp1, des1 = detector.detectAndCompute(extracted_image, None)
     best_match = None
     best_score = 0
-    for model_name, model_img in reference_images.items():
+    for model_name, model_img in load_reference_images().items():
         kp2, des2 = detector.detectAndCompute(model_img, None)
         if des1 is not None and des2 is not None:
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True) if method=="ORB" else cv2.BFMatcher()
@@ -107,15 +114,13 @@ def match_images(extracted_image, reference_images, method="ORB"):
 def compute_homography_bbox(extracted_image, template, method="ORB", ransac_thresh=5.0, ratio_thresh=0.75):
     """
     Calcule l'homographie entre l'image extraite et le template pour obtenir la bounding box.
-    Retourne la bbox sous forme de dict si suffisante, sinon None.
+    Retourne la bbox (dict) si suffisante, sinon None.
     """
-    # Choix du détecteur
     detector = cv2.ORB_create() if method=="ORB" else cv2.SIFT_create()
     kp1, des1 = detector.detectAndCompute(extracted_image, None)
     kp2, des2 = detector.detectAndCompute(template, None)
     if des1 is None or des2 is None:
         return None
-    # Utilisation de BFMatcher avec k=2 pour appliquer le ratio test
     norm = cv2.NORM_HAMMING if method=="ORB" else cv2.NORM_L2
     bf = cv2.BFMatcher(norm)
     matches = bf.knnMatch(des1, des2, k=2)
@@ -138,6 +143,19 @@ def compute_homography_bbox(extracted_image, template, method="ORB", ransac_thre
             bbox = {"left": float(min_x), "top": float(min_y), "width": float(max_x - min_x), "height": float(max_y - min_y)}
             return bbox
     return None
+
+def is_within_margin(ref_bbox, comp_bbox, margin):
+    """
+    Compare deux bounding boxes et retourne (bool, differences) :
+      - bool : True si chaque coordonnée est dans la marge d'erreur,
+      - differences : les écarts absolus pour chaque coordonnée.
+    """
+    diff_left = abs(ref_bbox["left"] - comp_bbox["left"])
+    diff_top = abs(ref_bbox["top"] - comp_bbox["top"])
+    diff_width = abs(ref_bbox["width"] - comp_bbox["width"])
+    diff_height = abs(ref_bbox["height"] - comp_bbox["height"])
+    within = diff_left <= margin and diff_top <= margin and diff_width <= margin and diff_height <= margin
+    return within, {"left": diff_left, "top": diff_top, "width": diff_width, "height": diff_height}
 
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -236,8 +254,8 @@ async def extract_images_from_pdf(file: UploadFile = File(...)):
 async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "ORB"):
     """
     Compare les images extraites du PDF aux modèles de référence via ORB/SIFT.
-    En plus du score, cette version calcule l'homographie pour déterminer la position
-    (bounding box) de l'élément détecté. Si le score est insuffisant, aucun élément n'est retourné.
+    En plus du score, cette version calcule l'homographie pour déterminer la position (bounding box)
+    de l'élément détecté. Si le score est insuffisant, aucun élément n'est retourné.
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
@@ -264,7 +282,6 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
                     continue
                 best_match, best_score = match_images(extracted_image, reference_images, method)
                 bbox = None
-                # Seule la correspondance est considérée si le score dépasse un seuil défini
                 if best_match:
                     if "filigrane" in best_match.lower():
                         threshold = 450
@@ -277,7 +294,6 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
                     if best_score < threshold:
                         best_match = "Aucune correspondance"
                     else:
-                        # Calcul de l'homographie pour obtenir la position
                         template = reference_images[best_match]
                         bbox = compute_homography_bbox(extracted_image, template, method)
                 detection_results.append({
@@ -292,12 +308,11 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
         logger.error(f"Erreur lors de la détection des éléments : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la détection des éléments : {str(e)}")
 
-# Endpoint pour vérifier les positions textuelles (non utilisé pour les images)
 @router.post("/verify-positions")
 async def verify_text_positions(file: UploadFile = File(...)):
     """
     Vérifie les positions des éléments textuels (via OCR).
-    Ce endpoint est destiné à la vérification du texte et n'est pas utilisé pour les images.
+    Ce endpoint est destiné à la vérification du texte et n'est pas utilisé pour la vérification des images.
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
@@ -333,3 +348,73 @@ async def verify_text_positions(file: UploadFile = File(...)):
         return {"status": "Vérification terminée", "results": position_results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions : {str(e)}")
+
+@router.post("/verify-element-reference")
+async def verify_element_reference(file: UploadFile = File(...), margin: int = 50, method: str = "ORB"):
+    """
+    Vérifie que les éléments détectés se trouvent aux positions de référence.
+    Pour chaque élément détecté par /pdf/detect-elements, la bounding box est comparée
+    à celle de référence (définie dans REFERENCE_BBOXES) en utilisant une marge d'erreur (en pixels).
+    """
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+    try:
+        # Utilisation de la détection pour obtenir les bounding boxes
+        pdf_bytes = await file.read()
+        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+        detection_results = []
+        reference_images = load_reference_images()
+        if not reference_images:
+            raise HTTPException(status_code=500, detail="Aucun modèle d'image de référence trouvé !")
+        for page_number, page in enumerate(pdf_document):
+            images = page.get_images(full=True)
+            for img_index, img in enumerate(images):
+                xref = img[0]
+                base_image = pdf_document.extract_image(xref)
+                if not base_image:
+                    logger.warning(f"Impossible d'extraire l'image {img_index} de la page {page_number+1}")
+                    continue
+                image_bytes = base_image["image"]
+                image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+                extracted_image = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)
+                if extracted_image is None:
+                    logger.warning(f"L'image {img_index} de la page {page_number+1} n'a pas pu être chargée.")
+                    continue
+                best_match, best_score = match_images(extracted_image, reference_images, method)
+                bbox = None
+                verification = "Not Verified"
+                diff_details = {}
+                if best_match and best_match in REFERENCE_BBOXES:
+                    if "filigrane" in best_match.lower():
+                        threshold = 450
+                    elif "logo" in best_match.lower():
+                        threshold = 450
+                    elif "signature" in best_match.lower():
+                        threshold = 300
+                    else:
+                        threshold = CONFIDENCE_THRESHOLD
+                    if best_score >= threshold:
+                        template = reference_images[best_match]
+                        bbox = compute_homography_bbox(extracted_image, template, method)
+                        if bbox is not None:
+                            ref_bbox = REFERENCE_BBOXES[best_match]
+                            within, diffs = is_within_margin(ref_bbox, bbox, margin)
+                            verification = "Passed" if within else "Failed"
+                            diff_details = diffs
+                        else:
+                            verification = "No BBox"
+                    else:
+                        best_match = "Aucune correspondance"
+                detection_results.append({
+                    "page": page_number + 1,
+                    "image_index": img_index,
+                    "element": best_match,
+                    "score": best_score,
+                    "position": bbox,
+                    "verification": verification,
+                    "differences": diff_details,
+                    "reference": REFERENCE_BBOXES.get(best_match)
+                })
+        return {"status": "Vérification des positions de référence terminée", "results": detection_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions de référence : {str(e)}")
