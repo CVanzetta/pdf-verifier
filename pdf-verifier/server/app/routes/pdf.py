@@ -328,3 +328,57 @@ async def validate_pdf(file: UploadFile = File(...)):
         logger.error(f"Erreur lors de la validation : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la validation : {str(e)}")
 
+@router.post("/verify-positions")
+async def verify_positions(file: UploadFile = File(...)):
+    """Vérifie les positions des éléments textuels importants."""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
+
+    try:
+        pdf_bytes = await file.read()
+        images = convert_from_bytes(pdf_bytes)
+
+        position_results = []
+
+        for i, img in enumerate(images):
+            processed_img = preprocess_image(img)
+            elements = extract_text_with_positions(processed_img)
+
+            for element in elements:
+                text = element["text"].lower()
+                position = element["position"]
+
+                # Exemple de vérification du logo en haut à gauche (à ajuster selon les besoins)
+                if "logo" in text:
+                    if position["left"] < 100 and position["top"] < 100:
+                        status = "Passed"
+                    else:
+                        status = "Failed"
+                    
+                    position_results.append({
+                        "page": i + 1,
+                        "element": text,
+                        "status": status,
+                        "position": position,
+                        "expected_position": "En haut à gauche"
+                    })
+
+                # Vérification de la signature en bas de la première page
+                if i == 0 and "signature" in text:
+                    if position["top"] > img.size[1] * 0.75:
+                        status = "Passed"
+                    else:
+                        status = "Failed"
+
+                    position_results.append({
+                        "page": i + 1,
+                        "element": text,
+                        "status": status,
+                        "position": position,
+                        "expected_position": "En bas de la première page"
+                    })
+
+        return {"status": "Vérification terminée", "results": position_results}
+
+    except Exception as e:
+        return HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions : {str(e)}")
