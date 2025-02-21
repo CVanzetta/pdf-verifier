@@ -52,6 +52,25 @@ def preprocess_image(image):
     _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return binary
 
+def extract_text_with_positions(image):
+    """Extrait les textes avec leurs positions (coordonnées) depuis une image."""
+    data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
+    elements = []
+    for i in range(len(data["text"])):
+        text = data["text"][i].strip()
+        if text:  # Ignorer les textes vides
+            element = {
+                "text": text,
+                "position": {
+                    "left": data["left"][i],
+                    "top": data["top"][i],
+                    "width": data["width"][i],
+                    "height": data["height"][i]
+                }
+            }
+            elements.append(element)
+    return elements
+
 def load_reference_images():
     """Charge les modèles d’images de référence (logos, signatures, filigranes)."""
     models = {}
@@ -381,4 +400,4 @@ async def verify_positions(file: UploadFile = File(...)):
         return {"status": "Vérification terminée", "results": position_results}
 
     except Exception as e:
-        return HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la vérification des positions : {str(e)}")
