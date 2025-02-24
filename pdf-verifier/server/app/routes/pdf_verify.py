@@ -1,5 +1,3 @@
-# server/app/routes/pdf_verify.py
-
 import fitz
 import cv2
 import numpy as np

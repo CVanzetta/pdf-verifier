@@ -1,5 +1,3 @@
-# server/app/routes/pdf_detect.py
-
 import cv2
 import numpy as np
 import fitz

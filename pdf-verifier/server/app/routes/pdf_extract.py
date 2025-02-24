@@ -1,5 +1,3 @@
-# server/app/routes/pdf_extract.py
-
 import os
 import fitz  # PyMuPDF
 from fastapi import APIRouter, UploadFile, File, HTTPException
