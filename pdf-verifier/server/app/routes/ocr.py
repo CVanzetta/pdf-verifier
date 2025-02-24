@@ -25,7 +25,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
 @router.post("/verify-positions")
 async def verify_text_positions(file: UploadFile = File(...)):
     """
-    Vérifie les positions de certains mots-clés (exemple : "logo", "signature") 
+    Vérifie les positions de certains mots-clés (exemple : "361", "réduction multie-équipement") 
     via l'extraction de texte et leur bounding box.
     """
     if not file.filename.endswith(".pdf"):
