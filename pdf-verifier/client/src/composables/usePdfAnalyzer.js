@@ -64,7 +64,7 @@ const analyzePdfFile = async (pdfFile, selectedTests, editiqueTests) => {
 
     return results;
     } catch (error) {
-    console.error('Une erreur s\'est produite lors de l\'analyse du PDF:', error);
+    console.error("Une erreur s'est produite lors de l'analyse du PDF:", error);
     throw error;
     }
 };
