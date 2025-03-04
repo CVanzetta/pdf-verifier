@@ -1,4 +1,3 @@
-// client/src/services/api.js
 import axios from 'axios';
 
 // On définit l'URL de base vers ton backend FastAPI.
