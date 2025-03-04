@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <!-- Use only the main container or main view here. -->
+    <!-- Composant principal de l'application -->
     <RefactoredEditique />
   </div>
 </template>
@@ -33,7 +33,5 @@ export default {
   background-color: rgba(0, 123, 255, 0.1);
 }
 </style>
-
-
 
 <!-- moi j'aime le surf -->
