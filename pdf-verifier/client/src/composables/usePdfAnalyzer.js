@@ -59,68 +59,68 @@ const analyzePdfFile = async (pdfFile, selectedTests, editiqueTests) => {
         }
         const status = evaluateEditique(test, textContent);
         return {
-          ...test,
-          status,
-          comments: status === 'Failed' ? generateComments(test) : ''
+        ...test,
+        status,
+        comments: status === 'Failed' ? generateComments(test) : ''
         };
-      }).filter((r) => r !== null);
+    }).filter((r) => r !== null);
 
-      return results;
+    return results;
     } catch (error) {
-      console.error("Une erreur s'est produite lors de l'analyse du PDF:", error);
-      throw error;
+    console.error("Une erreur s'est produite lors de l'analyse du PDF:", error);
+    throw error;
     }
-  };
+};
 
   // -----------------------------------------------------------
   // 2) Fonctions de normalisation et d'évaluation des conditions
   // -----------------------------------------------------------
-  const normalizeText = (text) => {
+const normalizeText = (text) => {
     return text
-      .toLowerCase()
-      .normalize('NFD')
+    .toLowerCase()
+    .normalize('NFD')
       .replace(/[\\u0300-\\u036f]/g, '') // suppression des accents
-      .replace(/\\s+/g, ' ')
-      .trim();
-  };
+    .replace(/\\s+/g, ' ')
+    .trim();
+};
 
-  const evaluateEditique = (test, textContent) => {
+const evaluateEditique = (test, textContent) => {
     if (!test.conditions || test.conditions.length === 0) {
-      console.warn('Aucune condition trouvée pour le test:', test.id);
-      return 'Passed';
+    console.warn('Aucune condition trouvée pour le test:', test.id);
+    return 'Passed';
     }
     for (const condition of test.conditions) {
-      const type = condition.type || '';
-      let passed = false;
-      switch (type) {
+    const type = condition.type || '';
+    let passed = false;
+    switch (type) {
         case 'surface_max':
-          passed = evaluateSurfaceMax(condition, textContent);
-          break;
+        passed = evaluateSurfaceMax(condition, textContent);
+        break;
         case 'montant':
-          passed = evaluateMontant(condition, textContent);
-          break;
+        passed = evaluateMontant(condition, textContent);
+        break;
         case 'date':
-          passed = evaluateDate(condition, textContent);
-          break;
+        passed = evaluateDate(condition, textContent);
+        break;
         case 'texte':
         case 'texte_present':
-          passed = evaluateTexte(condition, textContent);
-          break;
+        passed = evaluateTexte(condition, textContent);
+        break;
         case 'texte_multi_colonnes':
-          passed = evaluateTexteMultiColonnes(condition, textContent);
-          break;
+        passed = evaluateTexteMultiColonnes(condition, textContent);
+        break;
         default:
-          console.error('Type de condition inconnu :', type);
-          return 'Failed';
-      }
-      if (!passed) {
+        console.error('Type de condition inconnu :', type);
         return 'Failed';
-      }
+    }
+    if (!passed) {
+        return 'Failed';
+    }
     }
     return 'Passed';
-  };
+};
 
-  const evaluateSurfaceMax = (condition, textContent) => {
+const evaluateSurfaceMax = (condition, textContent) => {
     const ref = normalizeText(condition.reference || '');
     const val = normalizeText(condition.value || '');
     const regex = new RegExp(`${ref}.*?(${val})`, 'i');
