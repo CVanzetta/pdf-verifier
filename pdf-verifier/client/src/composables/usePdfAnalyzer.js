@@ -125,78 +125,78 @@ const evaluateSurfaceMax = (condition, textContent) => {
     const val = normalizeText(condition.value || '');
     const regex = new RegExp(`${ref}.*?(${val})`, 'i');
     return regex.test(textContent);
-  };
+};
 
-  const evaluateMontant = (condition, textContent) => {
+const evaluateMontant = (condition, textContent) => {
     const ref = normalizeText(condition.reference || '');
     const regex = new RegExp(`${ref}.*?(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?)`, 'i');
     return regex.test(textContent);
-  };
+};
 
-  const evaluateDate = (condition, textContent) => {
+const evaluateDate = (condition, textContent) => {
     const ref = normalizeText(condition.reference || '');
     const regex = new RegExp(`${ref}.*?(\\d{2}/\\d{2}/\\d{4})`, 'i');
     return regex.test(textContent);
-  };
+};
 
-  const evaluateTexte = (condition, textContent) => {
+const evaluateTexte = (condition, textContent) => {
     const val = normalizeText(condition.value || '');
     return textContent.includes(val);
-  };
+};
 
-  const evaluateTexteMultiColonnes = (condition, textContent) => {
+const evaluateTexteMultiColonnes = (condition, textContent) => {
     const normalizedText = normalizeText(textContent);
     const values = (condition.values || []).map((v) => normalizeText(v));
     return values.every((val) => normalizedText.includes(val));
-  };
+};
 
-  const generateComments = (test) => {
+const generateComments = (test) => {
     return `La condition ${test.article} n'a pas été remplie. Veuillez vérifier les exigences.`;
-  };
+};
 
   // -----------------------------------------------------------
   // 3) Variables et fonction pour l'analyse côté backend
   // -----------------------------------------------------------
-  const isLoading = ref(false);
-  const error = ref(null);
-  const analysisResult = ref(null);
+const isLoading = ref(false);
+const error = ref(null);
+const analysisResult = ref(null);
 
-  /**
+    /**
    * Envoie le PDF au backend pour analyse.
    * Utilise l'endpoint /verify-element-reference (à adapter selon tes besoins).
    * @param {File} pdfFile - Le fichier PDF à analyser.
    */
-  const analyzePdfFileBackend = async (pdfFile) => {
+const analyzePdfFileBackend = async (pdfFile) => {
     if (!pdfFile) {
-      console.error('Aucun PDF sélectionné pour l’analyse côté backend.');
-      return;
+    console.error('Aucun PDF sélectionné pour l’analyse côté backend.');
+    return;
     }
     isLoading.value = true;
     error.value = null;
     analysisResult.value = null;
     try {
-      const formData = new FormData();
+    const formData = new FormData();
       // Le backend attend le fichier dans le champ 'file'
-      formData.append('file', pdfFile);
+    formData.append('file', pdfFile);
 
       // Appel à l'endpoint FastAPI (ajuste le chemin si nécessaire)
-      const response = await apiClient.post('/verify-element-reference', formData, {
+    const response = await apiClient.post('/verify-element-reference', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-      });
+    });
 
-      analysisResult.value = response.data;
+    analysisResult.value = response.data;
     } catch (err) {
-      console.error('[analyzePdfFileBackend Error]', err);
-      error.value = err.response?.data?.detail || err.message;
+    console.error('[analyzePdfFileBackend Error]', err);
+    error.value = err.response?.data?.detail || err.message;
     } finally {
-      isLoading.value = false;
+    isLoading.value = false;
     }
-  };
+};
 
   // -----------------------------------------------------------
   // 4) Retour des fonctions et variables
   // -----------------------------------------------------------
-  return {
+return {
     // Fonction d'analyse locale (optionnelle)
     analyzePdfFile,
     // Variables et fonction pour l'analyse côté backend
@@ -204,5 +204,5 @@ const evaluateSurfaceMax = (condition, textContent) => {
     error,
     analysisResult,
     analyzePdfFileBackend,
-  };
+};
 }
