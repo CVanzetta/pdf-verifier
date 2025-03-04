@@ -1,13 +1,11 @@
+// client/src/services/api.js
 import axios from 'axios';
 
-// On récupère l'URL de base depuis une variable d'environnement Vite :
-// Crée un fichier .env ou .env.local avec : VITE_API_URL=http://ton-backend:5000
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-// On crée une instance Axios avec l'URL de base
-// On ne définit pas de 'Content-Type' par défaut pour laisser Axios choisir automatiquement
+// On définit l'URL de base vers ton backend FastAPI.
+// Par exemple : http://127.0.0.1:5000 (ou l'URL/port que tu utilises).
 const apiClient = axios.create({
-  baseURL,
+  baseURL: 'http://127.0.0.1:5000', 
+  // On ne met pas 'Content-Type' pour que Axios détecte automatiquement
 });
 
 // ----- Intercepteurs (optionnels) -----
@@ -15,14 +13,9 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Ex : ajouter un token d'authentification si nécessaire
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
     return config;
   },
   (error) => {
-    // Gérer les erreurs de requête (ex : logs)
     return Promise.reject(error);
   }
 );
@@ -30,13 +23,10 @@ apiClient.interceptors.request.use(
 // 2. Intercepteur de réponse
 apiClient.interceptors.response.use(
   (response) => {
-    // Traitement global des réponses OK
     return response;
   },
   (error) => {
-    // Gestion globale des erreurs
     console.error('[API error]', error);
-    // Tu peux rediriger vers une page de login, afficher une alerte, etc.
     return Promise.reject(error);
   }
 );
