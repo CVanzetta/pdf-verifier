@@ -42,5 +42,3 @@ const selectedTests = ref([
   background-color: rgba(0, 123, 255, 0.1);
 }
 </style>
-
-<!-- moi j'aime le surf -->
