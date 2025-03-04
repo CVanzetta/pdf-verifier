@@ -10,52 +10,52 @@ export default function usePdfAnalyzer() {
   // -----------------------------------------------------------
   // 1) Fonction d'analyse locale (avec pdfjs-dist)
   // -----------------------------------------------------------
-  const analyzePdfFile = async (pdfFile, selectedTests, editiqueTests) => {
+const analyzePdfFile = async (pdfFile, selectedTests, editiqueTests) => {
     if (!pdfFile) {
-      console.error('Veuillez téléverser un fichier PDF avant de lancer l\'analyse.');
-      return [];
+    console.error('Veuillez téléverser un fichier PDF avant de lancer l\'analyse.');
+    return [];
     }
     if (pdfFile.size > 10 * 1024 * 1024) {
-      console.error('Le fichier téléversé est trop volumineux (max 10Mo).');
-      return [];
+    console.error('Le fichier téléversé est trop volumineux (max 10Mo).');
+    return [];
     }
     if (selectedTests.length === 0) {
-      console.error('Aucun test sélectionné. Veuillez sélectionner au moins un test.');
-      return [];
+    console.error('Aucun test sélectionné. Veuillez sélectionner au moins un test.');
+    return [];
     }
     try {
-      const arrayBuffer = await pdfFile.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      console.log(`PDF chargé. Nombre de pages : ${pdf.numPages}`);
+    const arrayBuffer = await pdfFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    console.log(`PDF chargé. Nombre de pages : ${pdf.numPages}`);
 
       // Extraction du texte du PDF
-      let textContent = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
+    let textContent = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const text = await page.getTextContent();
         const pageText = text.items.map((item) => item.str).join(' ');
         textContent += pageText + ' ';
-      }
-      textContent = normalizeText(textContent);
+    }
+    textContent = normalizeText(textContent);
 
       // Aplatir tous les tests
-      const allTests = [];
-      for (const category of editiqueTests.categories) {
+    const allTests = [];
+    for (const category of editiqueTests.categories) {
         if (category.sousCategories && category.sousCategories.length > 0) {
-          for (const sc of category.sousCategories) {
+        for (const sc of category.sousCategories) {
             allTests.push(...sc.tests);
-          }
-        } else {
-          allTests.push(...category.tests);
         }
-      }
+        } else {
+        allTests.push(...category.tests);
+        }
+    }
 
       // Évaluation des tests
-      const results = selectedTests.map((testId) => {
+    const results = selectedTests.map((testId) => {
         const test = allTests.find((t) => t.id === testId);
         if (!test) {
-          console.error(`Test avec l'ID ${testId} introuvable.`);
-          return null;
+            console.error(`Test avec l'ID ${testId} introuvable.`);
+            return null;
         }
         const status = evaluateEditique(test, textContent);
         return {
