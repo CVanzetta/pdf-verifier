@@ -40,7 +40,7 @@
                     >
                     <Checkbox v-model="localSelectedTests" :value="test.id" @change="emitLocalData" />
                     <span>{{ test.categorie + ' - ' + test.article }}</span>
-                    <i class="pi pi-info-circle ml-2 text-blue-6500"></i>
+                    <i class="pi pi-info-circle ml-2 text-blue-650"></i>
                     </li>
                 </ul>
                 </div>
