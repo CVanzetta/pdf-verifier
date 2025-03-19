@@ -79,5 +79,13 @@
   .text-gray-500 {
     color: #6b7280;
   }
+
+
+
+
+/
+
+
+
   </style>
   
