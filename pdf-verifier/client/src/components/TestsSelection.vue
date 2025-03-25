@@ -174,4 +174,3 @@ function getCategoryTestIds(category) {
     return tests;
 }
 </script>
-<!-- TODOO voir pour eclaircir le code et le front -->
