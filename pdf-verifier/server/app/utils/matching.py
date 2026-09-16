@@ -1,20 +1,31 @@
-import os
+import json
+from pathlib import Path
 import cv2
 import numpy as np
 
-REFERENCE_MODELS_DIR = "reference_models"  # À adapter si besoin
+SERVER_DIR = Path(__file__).resolve().parents[2]
+REFERENCE_MODELS_DIR = SERVER_DIR / "reference_models"
+REFERENCE_BBOXES_FILE = SERVER_DIR / "reference_bboxes.json"
 
 def load_reference_images():
     """Charge les images de référence depuis le dossier reference_models."""
     models = {}
-    if not os.path.isdir(REFERENCE_MODELS_DIR):
+    if not REFERENCE_MODELS_DIR.is_dir():
         return models
 
-    for model_name in os.listdir(REFERENCE_MODELS_DIR):
-        model_path = os.path.join(REFERENCE_MODELS_DIR, model_name)
-        if os.path.isfile(model_path):
-            models[model_name] = cv2.imread(model_path, cv2.IMREAD_GRAYSCALE)
+    for model_path in REFERENCE_MODELS_DIR.iterdir():
+        if model_path.is_file():
+            image = cv2.imread(str(model_path), cv2.IMREAD_GRAYSCALE)
+            if image is not None:
+                models[model_path.name] = image
     return models
+
+def load_reference_bboxes():
+    """Charge les positions attendues depuis un fichier JSON local facultatif."""
+    if not REFERENCE_BBOXES_FILE.is_file():
+        return {}
+    with REFERENCE_BBOXES_FILE.open(encoding="utf-8") as config_file:
+        return json.load(config_file)
 
 def match_images(extracted_image, reference_images, method="ORB"):
     """

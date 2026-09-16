@@ -1,0 +1,63 @@
+{
+  "categories": [
+    {
+      "nom": "Informations générales",
+      "tests": [
+        {
+          "id": 1,
+          "categorie": "Informations générales",
+          "article": "Titre du document",
+          "conditions": [
+            {
+              "type": "texte_present",
+              "value": "document de démonstration",
+              "reference": "En-tête"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "categorie": "Informations générales",
+          "article": "Date",
+          "conditions": [
+            {
+              "type": "date",
+              "reference": "date"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nom": "Valeurs de contrôle",
+      "tests": [
+        {
+          "id": 3,
+          "categorie": "Valeurs de contrôle",
+          "article": "Montant total",
+          "conditions": [
+            {
+              "type": "montant",
+              "reference": "montant total"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "categorie": "Valeurs de contrôle",
+          "article": "Mentions requises",
+          "conditions": [
+            {
+              "type": "texte_multi_colonnes",
+              "values": [
+                "référence",
+                "description"
+              ],
+              "reference": "Tableau récapitulatif"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -2,15 +2,15 @@ import fitz
 import cv2
 import numpy as np
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from ..utils.matching import load_reference_images, match_images, compute_homography_bbox, is_within_margin
+from ..utils.matching import (
+    compute_homography_bbox,
+    is_within_margin,
+    load_reference_bboxes,
+    load_reference_images,
+    match_images,
+)
 
 router = APIRouter()
-
-REFERENCE_BBOXES = {
-    "signature.png": {"left": 0, "top": 0, "width": 343, "height": 171},
-    "filigrane_specimen.png": {"left": 0, "top": 0, "width": 1216, "height": 1723},
-    "logo.png": {"left": 0, "top": 0, "width": 1671, "height": 247},
-}
 
 CONFIDENCE_THRESHOLD = 10  # Par défaut
 
@@ -26,6 +26,7 @@ async def verify_element_reference(file: UploadFile = File(...), margin: int = 5
         detection_results = []
 
         reference_images = load_reference_images()
+        reference_bboxes = load_reference_bboxes()
         if not reference_images:
             raise HTTPException(status_code=500, detail="Aucun modèle d'image de référence trouvé !")
 
@@ -47,25 +48,17 @@ async def verify_element_reference(file: UploadFile = File(...), margin: int = 5
                 verification = "Not Verified"
                 diff_details = {}
 
-                if best_match and best_match in REFERENCE_BBOXES:
-                    # Définir un seuil selon l'élément
-                    if "filigrane" in best_match.lower():
-                        threshold = 450
-                    elif "logo" in best_match.lower():
-                        threshold = 450
-                    elif "signature" in best_match.lower():
-                        threshold = 300
-                    else:
-                        threshold = CONFIDENCE_THRESHOLD
-
-                    if best_score >= threshold:
+                if best_match:
+                    if best_score >= CONFIDENCE_THRESHOLD:
                         template = reference_images[best_match]
                         bbox = compute_homography_bbox(extracted_image, template, method)
-                        if bbox is not None:
-                            ref_bbox = REFERENCE_BBOXES[best_match]
+                        if bbox is not None and best_match in reference_bboxes:
+                            ref_bbox = reference_bboxes[best_match]
                             within, diffs = is_within_margin(ref_bbox, bbox, margin)
                             verification = "Passed" if within else "Failed"
                             diff_details = diffs
+                        elif bbox is not None:
+                            verification = "Position non configurée"
                         else:
                             verification = "No BBox"
                     else:
@@ -79,7 +72,7 @@ async def verify_element_reference(file: UploadFile = File(...), margin: int = 5
                     "position": bbox,
                     "verification": verification,
                     "differences": diff_details,
-                    "reference": REFERENCE_BBOXES.get(best_match)
+                    "reference": reference_bboxes.get(best_match)
                 })
 
         return {"status": "Vérification des positions de référence terminée", "results": detection_results}

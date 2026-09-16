@@ -40,17 +40,7 @@ async def detect_elements_in_pdf(file: UploadFile = File(...), method: str = "OR
 
                 bbox = None
                 if best_match:
-                    # Exemple de seuils spécifiques
-                    if "filigrane" in best_match.lower():
-                        threshold = 450
-                    elif "logo" in best_match.lower():
-                        threshold = 450
-                    elif "signature" in best_match.lower():
-                        threshold = 300
-                    else:
-                        threshold = CONFIDENCE_THRESHOLD
-
-                    if best_score < threshold:
+                    if best_score < CONFIDENCE_THRESHOLD:
                         best_match = "Aucune correspondance"
                     else:
                         template = reference_images[best_match]

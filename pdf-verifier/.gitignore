@@ -1,6 +1,18 @@
 .DS_Store
 node_modules
 /dist
+client/dist/
+
+# Fichiers générés ou fournis localement au serveur
+server/.venv/
+server/uploads/
+server/temp_images/
+server/extracted_images/
+server/logs/
+server/reference_models/
+server/reference_bboxes.json
+server/**/__pycache__/
+server/**/*.py[cod]
 
 
 # local env files

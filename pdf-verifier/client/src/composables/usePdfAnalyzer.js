@@ -79,7 +79,7 @@ const normalizeText = (text) => {
     return text
     .toLowerCase()
     .normalize('NFD')
-      .replace(/[\\u0300-\\u036f]/g, '') // suppression des accents
+    .replace(/[\\u0300-\\u036f]/g, '') // suppression des accents
     .replace(/\\s+/g, ' ')
     .trim();
 };

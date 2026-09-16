@@ -83,7 +83,6 @@
   </template>
   
   <script setup>
-  import { ref } from 'vue';
   import FileUpload from 'primevue/fileupload';
   import Button from 'primevue/button';
   import Card from 'primevue/card';
@@ -106,7 +105,7 @@
   const emit = defineEmits(['update:pdfFile']);
   
   // On utilise le composable pour l'analyse côté backend
-  const { isLoading, error, analysisResult, analyzePdfFileBackend } = usePdfAnalyzer();
+  const { isLoading, analysisResult, analyzePdfFileBackend } = usePdfAnalyzer();
   
   // Méthodes
   function onFileSelect(event) {
