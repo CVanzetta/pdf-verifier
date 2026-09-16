@@ -10,6 +10,14 @@ Le dépôt ne contient aucun document métier, logo, signature, fichier téléve
 - Python 3.10 ou supérieur
 - Tesseract et Poppler pour les routes OCR
 
+## Cloner le dépôt privé
+
+```bash
+git clone https://github.com/CVanzetta/pdf-verifier.git
+```
+
+Ce dépôt est la copie personnelle assainie du projet. Aucun commit ne doit être poussé vers le dépôt GitLab de l'entreprise.
+
 ## Lancer le client
 
 ```bash
