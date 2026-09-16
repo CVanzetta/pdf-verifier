@@ -1,0 +1,35 @@
+.DS_Store
+node_modules
+/dist
+client/dist/
+
+# Fichiers générés ou fournis localement au serveur
+server/.venv/
+server/uploads/
+server/temp_images/
+server/extracted_images/
+server/logs/
+server/reference_models/
+server/reference_bboxes.json
+server/**/__pycache__/
+server/**/*.py[cod]
+
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
